@@ -26,6 +26,7 @@ dependencies:
   url_launcher: ^6.1.14
   google_fonts: ^6.2.1
   google_sign_in: ^6.1.6
+  sign_in_with_apple: ^6.1.0
 
 dev_dependencies:
   flutter_test:

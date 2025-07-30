@@ -1,79 +1,116 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<User?> register({
-    required String email,
-    required String password,
-    required String nickname,
-    String? photoUrl,
-  }) async {
-    final userCred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-    await _db.collection('users').doc(userCred.user!.uid).set({
-      'email': email,
-      'nickname': nickname,
-      'photoUrl': photoUrl,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    return userCred.user;
-  }
+  User? get currentUser => _auth.currentUser;
 
-  Future<User?> login(String email, String password) async {
-    final userCred = await _auth.signInWithEmailAndPassword(email: email, password: password);
-    return userCred.user;
-  }
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  Future<void> logout() async {
-    await _auth.signOut();
+  Future<UserCredential?> signInWithEmailAndPassword(String email, String password) async {
     try {
-      await _googleSignIn.signOut();
-    } catch (_) {}
-  }
-
-  Future<bool> checkNicknameUnique(String nickname) async {
-    final snap = await _db.collection('users').where('nickname', isEqualTo: nickname).get();
-    return snap.docs.isEmpty;
-  }
-
-  Future<void> updateProfile(String uid, {String? nickname, String? photoUrl}) async {
-    final data = <String, dynamic>{};
-    if (nickname != null) data['nickname'] = nickname;
-    if (photoUrl != null) data['photoUrl'] = photoUrl;
-    if (data.isNotEmpty) {
-      await _db.collection('users').doc(uid).update(data);
-    }
-  }
-
-  Future<User?> googleSignIn() async {
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      final userCred = await _auth.signInWithCredential(credential);
-      final user = userCred.user;
-      if (user != null) {
-        final userDoc = await _db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-          await _db.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'nickname': user.displayName ?? 'User',
-            'photoUrl': user.photoURL,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-      return user;
+      return await _auth.signInWithEmailAndPassword(email: email, password: password);
     } catch (e) {
       rethrow;
     }
+  }
+
+  Future<UserCredential?> createUserWithEmailAndPassword(String email, String password, String name) async {
+    try {
+      UserCredential result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      
+      await result.user?.updateDisplayName(name);
+      
+      await _firestore.collection('users').doc(result.user!.uid).set({
+        'name': name,
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+        'photoURL': null,
+      });
+      
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return null;
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      UserCredential result = await _auth.signInWithCredential(credential);
+      
+      if (result.additionalUserInfo?.isNewUser == true) {
+        await _firestore.collection('users').doc(result.user!.uid).set({
+          'name': result.user!.displayName,
+          'email': result.user!.email,
+          'photoURL': result.user!.photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final oauthCredential = OAuthProvider("apple.com").credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      UserCredential result = await _auth.signInWithCredential(oauthCredential);
+      
+      if (result.additionalUserInfo?.isNewUser == true) {
+        String displayName = '';
+        if (appleCredential.givenName != null && appleCredential.familyName != null) {
+          displayName = '${appleCredential.givenName} ${appleCredential.familyName}';
+        }
+        
+        await result.user?.updateDisplayName(displayName);
+        
+        await _firestore.collection('users').doc(result.user!.uid).set({
+          'name': displayName.isNotEmpty ? displayName : 'Apple User',
+          'email': result.user!.email,
+          'photoURL': null,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> signOut() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+  }
+
+  Future<void> resetPassword(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
   }
 } 
