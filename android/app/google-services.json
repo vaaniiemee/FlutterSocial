@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "951197382156",
+    "project_id": "meetplace-81e69",
+    "storage_bucket": "meetplace-81e69.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:951197382156:android:4ca9cd0ef3f25ac3d2e029",
+        "android_client_info": {
+          "package_name": "com.example.Meetplace"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "951197382156-to6g4657i0ihnmj0giblckd6jv4aaavu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.Meetplace",
+            "certificate_hash": "fe4a69fe7875f6deda95a6d3e125d016eb47de48"
+          }
+        },
+        {
+          "client_id": "951197382156-agan9bplq2iqo9oil99n84ifuhpeup39.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDp417gjpF4JdPnVdXPplCEV1oruVeTFKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "951197382156-agan9bplq2iqo9oil99n84ifuhpeup39.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
