@@ -170,25 +170,25 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   String _getErrorMessage(String error) {
     error = error.toLowerCase();
     
-    if (error.contains('user-not-found') || error.contains('пользователь не найден')) {
+    if (error.contains('user-not-found')) {
       return 'User not found. Please check your email.';
-    } else if (error.contains('wrong-password') || error.contains('неверный пароль') || error.contains('password is invalid') || error.contains('invalid-password') || error.contains('invalid credential')) {
+    } else if (error.contains('wrong-password') || error.contains('password is invalid') || error.contains('invalid-password') || error.contains('invalid credential')) {
       return 'Wrong password. Please try again.';
-    } else if (error.contains('email-already-in-use') || error.contains('email already exists') || error.contains('почта уже используется')) {
+    } else if (error.contains('email-already-in-use') || error.contains('email already exists')) {
       return 'Email already exists. Please sign in instead.';
-    } else if (error.contains('weak-password') || error.contains('слабый пароль')) {
+    } else if (error.contains('weak-password')) {
       return 'Password is too weak. Use at least 6 characters.';
-    } else if (error.contains('invalid-email') || error.contains('неверный email')) {
+    } else if (error.contains('invalid-email')) {
       return 'Invalid email address.';
-    } else if (error.contains('network-request-failed') || error.contains('network error') || error.contains('сетевая ошибка')) {
+    } else if (error.contains('network-request-failed') || error.contains('network error')) {
       return 'Network error. Please check your connection.';
-    } else if (error.contains('popup-closed-by-user') || error.contains('cancelled') || error.contains('отменено')) {
+    } else if (error.contains('popup-closed-by-user') || error.contains('cancelled')) {
       return 'Sign in cancelled.';
-    } else if (error.contains('too-many-requests') || error.contains('слишком много запросов')) {
+    } else if (error.contains('too-many-requests')) {
       return 'Too many attempts. Please try again later.';
-    } else if (error.contains('user-disabled') || error.contains('пользователь отключен')) {
+    } else if (error.contains('user-disabled')) {
       return 'Account is disabled. Please contact support.';
-    } else if (error.contains('operation-not-allowed') || error.contains('операция не разрешена')) {
+    } else if (error.contains('operation-not-allowed')) {
       return 'Sign in method not enabled.';
     } else {
       return 'An error occurred. Please try again.';
@@ -243,7 +243,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
