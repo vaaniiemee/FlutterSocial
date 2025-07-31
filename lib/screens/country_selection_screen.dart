@@ -1,0 +1,552 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'goals_selection_screen.dart';
+
+class CountrySelectionScreen extends StatefulWidget {
+  const CountrySelectionScreen({super.key});
+
+  @override
+  State<CountrySelectionScreen> createState() => _CountrySelectionScreenState();
+}
+
+class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _selectedCountry;
+  bool _isLoading = false;
+  bool _isDetectingLocation = false;
+
+  final List<Map<String, String>> _countries = [
+    {'name': 'Afghanistan', 'code': 'AF', 'flag': '🇦🇫'},
+    {'name': 'Albania', 'code': 'AL', 'flag': '🇦🇱'},
+    {'name': 'Algeria', 'code': 'DZ', 'flag': '🇩🇿'},
+    {'name': 'Andorra', 'code': 'AD', 'flag': '🇦🇩'},
+    {'name': 'Angola', 'code': 'AO', 'flag': '🇦🇴'},
+    {'name': 'Antigua and Barbuda', 'code': 'AG', 'flag': '🇦🇬'},
+    {'name': 'Argentina', 'code': 'AR', 'flag': '🇦🇷'},
+    {'name': 'Armenia', 'code': 'AM', 'flag': '🇦🇲'},
+    {'name': 'Australia', 'code': 'AU', 'flag': '🇦🇺'},
+    {'name': 'Austria', 'code': 'AT', 'flag': '🇦🇹'},
+    {'name': 'Azerbaijan', 'code': 'AZ', 'flag': '🇦🇿'},
+    {'name': 'Bahamas', 'code': 'BS', 'flag': '🇧🇸'},
+    {'name': 'Bahrain', 'code': 'BH', 'flag': '🇧🇭'},
+    {'name': 'Bangladesh', 'code': 'BD', 'flag': '🇧🇩'},
+    {'name': 'Barbados', 'code': 'BB', 'flag': '🇧🇧'},
+    {'name': 'Belarus', 'code': 'BY', 'flag': '🇧🇾'},
+    {'name': 'Belgium', 'code': 'BE', 'flag': '🇧🇪'},
+    {'name': 'Belize', 'code': 'BZ', 'flag': '🇧🇿'},
+    {'name': 'Benin', 'code': 'BJ', 'flag': '🇧🇯'},
+    {'name': 'Bhutan', 'code': 'BT', 'flag': '🇧🇹'},
+    {'name': 'Bolivia', 'code': 'BO', 'flag': '🇧🇴'},
+    {'name': 'Bosnia and Herzegovina', 'code': 'BA', 'flag': '🇧🇦'},
+    {'name': 'Botswana', 'code': 'BW', 'flag': '🇧🇼'},
+    {'name': 'Brazil', 'code': 'BR', 'flag': '🇧🇷'},
+    {'name': 'Brunei', 'code': 'BN', 'flag': '🇧🇳'},
+    {'name': 'Bulgaria', 'code': 'BG', 'flag': '🇧🇬'},
+    {'name': 'Burkina Faso', 'code': 'BF', 'flag': '🇧🇫'},
+    {'name': 'Burundi', 'code': 'BI', 'flag': '🇧🇮'},
+    {'name': 'Cambodia', 'code': 'KH', 'flag': '🇰🇭'},
+    {'name': 'Cameroon', 'code': 'CM', 'flag': '🇨🇲'},
+    {'name': 'Canada', 'code': 'CA', 'flag': '🇨🇦'},
+    {'name': 'Cape Verde', 'code': 'CV', 'flag': '🇨🇻'},
+    {'name': 'Central African Republic', 'code': 'CF', 'flag': '🇨🇫'},
+    {'name': 'Chad', 'code': 'TD', 'flag': '🇹🇩'},
+    {'name': 'Chile', 'code': 'CL', 'flag': '🇨🇱'},
+    {'name': 'China', 'code': 'CN', 'flag': '🇨🇳'},
+    {'name': 'Colombia', 'code': 'CO', 'flag': '🇨🇴'},
+    {'name': 'Comoros', 'code': 'KM', 'flag': '🇰🇲'},
+    {'name': 'Congo', 'code': 'CG', 'flag': '🇨🇬'},
+    {'name': 'Costa Rica', 'code': 'CR', 'flag': '🇨🇷'},
+    {'name': 'Croatia', 'code': 'HR', 'flag': '🇭🇷'},
+    {'name': 'Cuba', 'code': 'CU', 'flag': '🇨🇺'},
+    {'name': 'Cyprus', 'code': 'CY', 'flag': '🇨🇾'},
+    {'name': 'Czech Republic', 'code': 'CZ', 'flag': '🇨🇿'},
+    {'name': 'Democratic Republic of the Congo', 'code': 'CD', 'flag': '🇨🇩'},
+    {'name': 'Denmark', 'code': 'DK', 'flag': '🇩🇰'},
+    {'name': 'Djibouti', 'code': 'DJ', 'flag': '🇩🇯'},
+    {'name': 'Dominica', 'code': 'DM', 'flag': '🇩🇲'},
+    {'name': 'Dominican Republic', 'code': 'DO', 'flag': '🇩🇴'},
+    {'name': 'East Timor', 'code': 'TL', 'flag': '🇹🇱'},
+    {'name': 'Ecuador', 'code': 'EC', 'flag': '🇪🇨'},
+    {'name': 'Egypt', 'code': 'EG', 'flag': '🇪🇬'},
+    {'name': 'El Salvador', 'code': 'SV', 'flag': '🇸🇻'},
+    {'name': 'Equatorial Guinea', 'code': 'GQ', 'flag': '🇬🇶'},
+    {'name': 'Eritrea', 'code': 'ER', 'flag': '🇪🇷'},
+    {'name': 'Estonia', 'code': 'EE', 'flag': '🇪🇪'},
+    {'name': 'Eswatini', 'code': 'SZ', 'flag': '🇸🇿'},
+    {'name': 'Ethiopia', 'code': 'ET', 'flag': '🇪🇹'},
+    {'name': 'Fiji', 'code': 'FJ', 'flag': '🇫🇯'},
+    {'name': 'Finland', 'code': 'FI', 'flag': '🇫🇮'},
+    {'name': 'France', 'code': 'FR', 'flag': '🇫🇷'},
+    {'name': 'Gabon', 'code': 'GA', 'flag': '🇬🇦'},
+    {'name': 'Gambia', 'code': 'GM', 'flag': '🇬🇲'},
+    {'name': 'Georgia', 'code': 'GE', 'flag': '🇬🇪'},
+    {'name': 'Germany', 'code': 'DE', 'flag': '🇩🇪'},
+    {'name': 'Ghana', 'code': 'GH', 'flag': '🇬🇭'},
+    {'name': 'Greece', 'code': 'GR', 'flag': '🇬🇷'},
+    {'name': 'Grenada', 'code': 'GD', 'flag': '🇬🇩'},
+    {'name': 'Guatemala', 'code': 'GT', 'flag': '🇬🇹'},
+    {'name': 'Guinea', 'code': 'GN', 'flag': '🇬🇳'},
+    {'name': 'Guinea-Bissau', 'code': 'GW', 'flag': '🇬🇼'},
+    {'name': 'Guyana', 'code': 'GY', 'flag': '🇬🇾'},
+    {'name': 'Haiti', 'code': 'HT', 'flag': '🇭🇹'},
+    {'name': 'Honduras', 'code': 'HN', 'flag': '🇭🇳'},
+    {'name': 'Hungary', 'code': 'HU', 'flag': '🇭🇺'},
+    {'name': 'Iceland', 'code': 'IS', 'flag': '🇮🇸'},
+    {'name': 'India', 'code': 'IN', 'flag': '🇮🇳'},
+    {'name': 'Indonesia', 'code': 'ID', 'flag': '🇮🇩'},
+    {'name': 'Iran', 'code': 'IR', 'flag': '🇮🇷'},
+    {'name': 'Iraq', 'code': 'IQ', 'flag': '🇮🇶'},
+    {'name': 'Ireland', 'code': 'IE', 'flag': '🇮🇪'},
+    {'name': 'Israel', 'code': 'IL', 'flag': '🇮🇱'},
+    {'name': 'Italy', 'code': 'IT', 'flag': '🇮🇹'},
+    {'name': 'Ivory Coast', 'code': 'CI', 'flag': '🇨🇮'},
+    {'name': 'Jamaica', 'code': 'JM', 'flag': '🇯🇲'},
+    {'name': 'Japan', 'code': 'JP', 'flag': '🇯🇵'},
+    {'name': 'Jordan', 'code': 'JO', 'flag': '🇯🇴'},
+    {'name': 'Kazakhstan', 'code': 'KZ', 'flag': '🇰🇿'},
+    {'name': 'Kenya', 'code': 'KE', 'flag': '🇰🇪'},
+    {'name': 'Kiribati', 'code': 'KI', 'flag': '🇰🇮'},
+    {'name': 'Kuwait', 'code': 'KW', 'flag': '🇰🇼'},
+    {'name': 'Kyrgyzstan', 'code': 'KG', 'flag': '🇰🇬'},
+    {'name': 'Laos', 'code': 'LA', 'flag': '🇱🇦'},
+    {'name': 'Latvia', 'code': 'LV', 'flag': '🇱🇻'},
+    {'name': 'Lebanon', 'code': 'LB', 'flag': '🇱🇧'},
+    {'name': 'Lesotho', 'code': 'LS', 'flag': '🇱🇸'},
+    {'name': 'Liberia', 'code': 'LR', 'flag': '🇱🇷'},
+    {'name': 'Libya', 'code': 'LY', 'flag': '🇱🇾'},
+    {'name': 'Liechtenstein', 'code': 'LI', 'flag': '🇱🇮'},
+    {'name': 'Lithuania', 'code': 'LT', 'flag': '🇱🇹'},
+    {'name': 'Luxembourg', 'code': 'LU', 'flag': '🇱🇺'},
+    {'name': 'Madagascar', 'code': 'MG', 'flag': '🇲🇬'},
+    {'name': 'Malawi', 'code': 'MW', 'flag': '🇲🇼'},
+    {'name': 'Malaysia', 'code': 'MY', 'flag': '🇲🇾'},
+    {'name': 'Maldives', 'code': 'MV', 'flag': '🇲🇻'},
+    {'name': 'Mali', 'code': 'ML', 'flag': '🇲🇱'},
+    {'name': 'Malta', 'code': 'MT', 'flag': '🇲🇹'},
+    {'name': 'Marshall Islands', 'code': 'MH', 'flag': '🇲🇭'},
+    {'name': 'Mauritania', 'code': 'MR', 'flag': '🇲🇷'},
+    {'name': 'Mauritius', 'code': 'MU', 'flag': '🇲🇺'},
+    {'name': 'Mexico', 'code': 'MX', 'flag': '🇲🇽'},
+    {'name': 'Micronesia', 'code': 'FM', 'flag': '🇫🇲'},
+    {'name': 'Moldova', 'code': 'MD', 'flag': '🇲🇩'},
+    {'name': 'Monaco', 'code': 'MC', 'flag': '🇲🇨'},
+    {'name': 'Mongolia', 'code': 'MN', 'flag': '🇲🇳'},
+    {'name': 'Montenegro', 'code': 'ME', 'flag': '🇲🇪'},
+    {'name': 'Morocco', 'code': 'MA', 'flag': '🇲🇦'},
+    {'name': 'Mozambique', 'code': 'MZ', 'flag': '🇲🇿'},
+    {'name': 'Myanmar', 'code': 'MM', 'flag': '🇲🇲'},
+    {'name': 'Namibia', 'code': 'NA', 'flag': '🇳🇦'},
+    {'name': 'Nauru', 'code': 'NR', 'flag': '🇳🇷'},
+    {'name': 'Nepal', 'code': 'NP', 'flag': '🇳🇵'},
+    {'name': 'Netherlands', 'code': 'NL', 'flag': '🇳🇱'},
+    {'name': 'New Zealand', 'code': 'NZ', 'flag': '🇳🇿'},
+    {'name': 'Nicaragua', 'code': 'NI', 'flag': '🇳🇮'},
+    {'name': 'Niger', 'code': 'NE', 'flag': '🇳🇪'},
+    {'name': 'Nigeria', 'code': 'NG', 'flag': '🇳🇬'},
+    {'name': 'North Korea', 'code': 'KP', 'flag': '🇰🇵'},
+    {'name': 'North Macedonia', 'code': 'MK', 'flag': '🇲🇰'},
+    {'name': 'Norway', 'code': 'NO', 'flag': '🇳🇴'},
+    {'name': 'Oman', 'code': 'OM', 'flag': '🇴🇲'},
+    {'name': 'Pakistan', 'code': 'PK', 'flag': '🇵🇰'},
+    {'name': 'Palau', 'code': 'PW', 'flag': '🇵🇼'},
+    {'name': 'Panama', 'code': 'PA', 'flag': '🇵🇦'},
+    {'name': 'Papua New Guinea', 'code': 'PG', 'flag': '🇵🇬'},
+    {'name': 'Paraguay', 'code': 'PY', 'flag': '🇵🇾'},
+    {'name': 'Peru', 'code': 'PE', 'flag': '🇵🇪'},
+    {'name': 'Philippines', 'code': 'PH', 'flag': '🇵🇭'},
+    {'name': 'Poland', 'code': 'PL', 'flag': '🇵🇱'},
+    {'name': 'Portugal', 'code': 'PT', 'flag': '🇵🇹'},
+    {'name': 'Qatar', 'code': 'QA', 'flag': '🇶🇦'},
+    {'name': 'Romania', 'code': 'RO', 'flag': '🇷🇴'},
+    {'name': 'Russia', 'code': 'RU', 'flag': '🇷🇺'},
+    {'name': 'Rwanda', 'code': 'RW', 'flag': '🇷🇼'},
+    {'name': 'Saint Kitts and Nevis', 'code': 'KN', 'flag': '🇰🇳'},
+    {'name': 'Saint Lucia', 'code': 'LC', 'flag': '🇱🇨'},
+    {'name': 'Saint Vincent and the Grenadines', 'code': 'VC', 'flag': '🇻🇨'},
+    {'name': 'Samoa', 'code': 'WS', 'flag': '🇼🇸'},
+    {'name': 'San Marino', 'code': 'SM', 'flag': '🇸🇲'},
+    {'name': 'Sao Tome and Principe', 'code': 'ST', 'flag': '🇸🇹'},
+    {'name': 'Saudi Arabia', 'code': 'SA', 'flag': '🇸🇦'},
+    {'name': 'Senegal', 'code': 'SN', 'flag': '🇸🇳'},
+    {'name': 'Serbia', 'code': 'RS', 'flag': '🇷🇸'},
+    {'name': 'Seychelles', 'code': 'SC', 'flag': '🇸🇨'},
+    {'name': 'Sierra Leone', 'code': 'SL', 'flag': '🇸🇱'},
+    {'name': 'Singapore', 'code': 'SG', 'flag': '🇸🇬'},
+    {'name': 'Slovakia', 'code': 'SK', 'flag': '🇸🇰'},
+    {'name': 'Slovenia', 'code': 'SI', 'flag': '🇸🇮'},
+    {'name': 'Solomon Islands', 'code': 'SB', 'flag': '🇸🇧'},
+    {'name': 'Somalia', 'code': 'SO', 'flag': '🇸🇴'},
+    {'name': 'South Africa', 'code': 'ZA', 'flag': '🇿🇦'},
+    {'name': 'South Korea', 'code': 'KR', 'flag': '🇰🇷'},
+    {'name': 'South Sudan', 'code': 'SS', 'flag': '🇸🇸'},
+    {'name': 'Spain', 'code': 'ES', 'flag': '🇪🇸'},
+    {'name': 'Sri Lanka', 'code': 'LK', 'flag': '🇱🇰'},
+    {'name': 'Sudan', 'code': 'SD', 'flag': '🇸🇩'},
+    {'name': 'Suriname', 'code': 'SR', 'flag': '🇸🇷'},
+    {'name': 'Sweden', 'code': 'SE', 'flag': '🇸🇪'},
+    {'name': 'Switzerland', 'code': 'CH', 'flag': '🇨🇭'},
+    {'name': 'Syria', 'code': 'SY', 'flag': '🇸🇾'},
+    {'name': 'Taiwan', 'code': 'TW', 'flag': '🇹🇼'},
+    {'name': 'Tajikistan', 'code': 'TJ', 'flag': '🇹🇯'},
+    {'name': 'Tanzania', 'code': 'TZ', 'flag': '🇹🇿'},
+    {'name': 'Thailand', 'code': 'TH', 'flag': '🇹🇭'},
+    {'name': 'Togo', 'code': 'TG', 'flag': '🇹🇬'},
+    {'name': 'Tonga', 'code': 'TO', 'flag': '🇹🇴'},
+    {'name': 'Trinidad and Tobago', 'code': 'TT', 'flag': '🇹🇹'},
+    {'name': 'Tunisia', 'code': 'TN', 'flag': '🇹🇳'},
+    {'name': 'Turkey', 'code': 'TR', 'flag': '🇹🇷'},
+    {'name': 'Turkmenistan', 'code': 'TM', 'flag': '🇹🇲'},
+    {'name': 'Tuvalu', 'code': 'TV', 'flag': '🇹🇻'},
+    {'name': 'Uganda', 'code': 'UG', 'flag': '🇺🇬'},
+    {'name': 'Ukraine', 'code': 'UA', 'flag': '🇺🇦'},
+    {'name': 'United Arab Emirates', 'code': 'AE', 'flag': '🇦🇪'},
+    {'name': 'United Kingdom', 'code': 'GB', 'flag': '🇬🇧'},
+    {'name': 'United States', 'code': 'US', 'flag': '🇺🇸'},
+    {'name': 'Uruguay', 'code': 'UY', 'flag': '🇺🇾'},
+    {'name': 'Uzbekistan', 'code': 'UZ', 'flag': '🇺🇿'},
+    {'name': 'Vanuatu', 'code': 'VU', 'flag': '🇻🇺'},
+    {'name': 'Vatican City', 'code': 'VA', 'flag': '🇻🇦'},
+    {'name': 'Venezuela', 'code': 'VE', 'flag': '🇻🇪'},
+    {'name': 'Vietnam', 'code': 'VN', 'flag': '🇻🇳'},
+    {'name': 'Yemen', 'code': 'YE', 'flag': '🇾🇪'},
+    {'name': 'Zambia', 'code': 'ZM', 'flag': '🇿🇲'},
+    {'name': 'Zimbabwe', 'code': 'ZW', 'flag': '🇿🇼'},
+  ];
+
+  List<Map<String, String>> get _filteredCountries {
+    if (_searchQuery.isEmpty) {
+      return _countries;
+    }
+    return _countries.where((country) {
+      return country['name']!.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
+
+  Future<void> _detectLocation() async {
+    setState(() {
+      _isDetectingLocation = true;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location services are disabled. Please enable them.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission denied'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permissions are permanently denied'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        String countryName = placemarks.first.country ?? '';
+        if (countryName.isNotEmpty) {
+          setState(() {
+            _selectedCountry = countryName;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Detected location: $countryName'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not determine country from location'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error detecting location: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isDetectingLocation = false;
+      });
+    }
+  }
+
+  Future<void> _saveCountrySelection() async {
+    if (_selectedCountry == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'country': _selectedCountry,
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save country selection'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const GoalsSelectionScreen(),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  Text(
+                    'Specify your location',
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Select your country or determine location automatically',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF1E3A8A),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[300],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search countries...',
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.grey),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: _isDetectingLocation ? null : _detectLocation,
+                          icon: _isDetectingLocation
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(Icons.my_location),
+                                                     label: Text(
+                             _isDetectingLocation ? 'Detecting...' : 'Current Location',
+                             style: GoogleFonts.poppins(
+                               fontSize: 14,
+                               fontWeight: FontWeight.w500,
+                             ),
+                           ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E3A8A),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _filteredCountries.length,
+                itemBuilder: (context, index) {
+                  final country = _filteredCountries[index];
+                  final isSelected = _selectedCountry == country['name'];
+                  
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    leading: Text(
+                      country['flag']!,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                    title: Text(
+                      country['name']!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected ? const Color(0xFF1E3A8A) : Colors.black,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(
+                            Icons.check_circle,
+                            color: Color(0xFF1E3A8A),
+                            size: 24,
+                          )
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedCountry = country['name'];
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+            if (_selectedCountry != null)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _saveCountrySelection,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            'Continue',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+} 
