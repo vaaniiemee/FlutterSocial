@@ -31,6 +31,7 @@ class AuthService {
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
         'photoURL': null,
+        'hasCompletedOnboarding': false,
       });
       
       return result;
@@ -58,6 +59,7 @@ class AuthService {
           'email': result.user!.email,
           'photoURL': result.user!.photoURL,
           'createdAt': FieldValue.serverTimestamp(),
+          'hasCompletedOnboarding': false,
         });
       }
       
@@ -96,6 +98,7 @@ class AuthService {
           'email': result.user!.email,
           'photoURL': null,
           'createdAt': FieldValue.serverTimestamp(),
+          'hasCompletedOnboarding': false,
         });
       }
       
@@ -106,11 +109,29 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> resetPassword(String email) async {
     await _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<bool> hasCompletedOnboarding() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+      
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (!doc.exists) return false;
+      
+      return doc.data()?['hasCompletedOnboarding'] ?? false;
+    } catch (e) {
+      return false;
+    }
   }
 } 
