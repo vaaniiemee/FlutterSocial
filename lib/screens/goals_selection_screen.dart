@@ -25,56 +25,56 @@ class _GoalsSelectionScreenState extends State<GoalsSelectionScreen> {
       'title': 'Study',
       'description': 'Academic and educational purposes',
       'icon': Icons.school,
-      'color': Color(0xFF4CAF50),
+      'color': const Color(0xFF4CAF50),
     },
     {
       'id': 'travel',
       'title': 'Travel',
       'description': 'Exploring new places and cultures',
       'icon': Icons.flight,
-      'color': Color(0xFF2196F3),
+      'color': const Color(0xFF2196F3),
     },
     {
       'id': 'work',
       'title': 'Work',
       'description': 'Professional and career development',
       'icon': Icons.work,
-      'color': Color(0xFFFF9800),
+      'color': const Color(0xFFFF9800),
     },
     {
       'id': 'social',
       'title': 'Social',
       'description': 'Meeting new people and networking',
       'icon': Icons.people,
-      'color': Color(0xFF9C27B0),
+      'color': const Color(0xFF9C27B0),
     },
     {
       'id': 'hobby',
       'title': 'Hobby',
       'description': 'Pursuing personal interests',
       'icon': Icons.sports_esports,
-      'color': Color(0xFFE91E63),
+      'color': const Color(0xFFE91E63),
     },
     {
       'id': 'business',
       'title': 'Business',
       'description': 'Entrepreneurship and startups',
       'icon': Icons.business,
-      'color': Color(0xFF607D8B),
+      'color': const Color(0xFF607D8B),
     },
     {
       'id': 'dating',
       'title': 'Dating',
       'description': 'Romantic relationships',
       'icon': Icons.favorite,
-      'color': Color(0xFFF44336),
+      'color': const Color(0xFFF44336),
     },
     {
       'id': 'other',
       'title': 'Other',
       'description': 'Other personal goals',
       'icon': Icons.more_horiz,
-      'color': Color(0xFF795548),
+      'color': const Color(0xFF795548),
     },
   ];
 
@@ -101,19 +101,23 @@ class _GoalsSelectionScreenState extends State<GoalsSelectionScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save goal selection'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save goal selection'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (context.mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
 
-    if (mounted) {
+    if (context.mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => const HomeScreen(),
@@ -194,9 +198,9 @@ class _GoalsSelectionScreenState extends State<GoalsSelectionScreen> {
                       Container(
                         width: 12,
                         height: 12,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF1E3A8A),
+                          color: Color(0xFF1E3A8A),
                         ),
                       ),
                     ],
@@ -248,14 +252,14 @@ class _GoalsSelectionScreenState extends State<GoalsSelectionScreen> {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: goal['color'].withOpacity(0.3),
+                                    color: goal['color'].withValues(alpha: 0.3),
                                     blurRadius: 8,
                                     offset: const Offset(0, 4),
                                   ),
                                 ]
                               : [
                                   BoxShadow(
-                                    color: Colors.grey.withOpacity(0.1),
+                                    color: Colors.grey.withValues(alpha: 0.1),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),

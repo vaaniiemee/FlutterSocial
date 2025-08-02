@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'explore_screen.dart';
+import 'communities_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -9,57 +11,79 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = [
+    const ExploreScreen(),
+    const CommunitiesScreen(),
+    const ProfileScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    print('HomeScreen: build called');
-    try {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('MeetPlace'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
-                print('HomeScreen: Sign out button pressed');
-                try {
-                  await AuthService().signOut();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Signed out successfully'),
-                        backgroundColor: Colors.green,
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  print('HomeScreen: Error signing out: $e');
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error signing out: $e'),
-                        backgroundColor: Colors.red,
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                }
-              },
+    return Scaffold(
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
             ),
           ],
         ),
-        body: const Center(
-          child: Text('Welcome to MeetPlace!'),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: Theme.of(context).primaryColor,
+          unselectedItemColor: Colors.grey[600],
+          selectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
+          ),
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.explore_outlined),
+              activeIcon: Icon(Icons.explore),
+              label: 'Explore',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_outline),
+              activeIcon: Icon(Icons.people),
+              label: 'Communities',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
         ),
-      );
-    } catch (e) {
-      print('HomeScreen: Error in build: $e');
-      return Scaffold(
-        body: Center(
-          child: Text('Error loading HomeScreen: $e'),
-        ),
-      );
-    }
+      ),
+      floatingActionButton: _selectedIndex == 1
+          ? FloatingActionButton(
+              onPressed: () {},
+              backgroundColor: Theme.of(context).primaryColor,
+              child: const Icon(
+                Icons.add,
+                color: Colors.white,
+              ),
+            )
+          : null,
+    );
   }
 } 

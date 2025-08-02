@@ -57,17 +57,17 @@ class _LogoWidgetState extends State<LogoWidget>
             opacity: _fadeAnimation,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              children: const [
                 Icon(
                   Icons.person,
                   size: 60,
-                  color: const Color(0xFF1E3A8A),
+                  color: Color(0xFF1E3A8A),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Icon(
                   Icons.person,
                   size: 60,
-                  color: const Color(0xFF1E3A8A),
+                  color: Color(0xFF1E3A8A),
                 ),
               ],
             ),

@@ -134,4 +134,17 @@ class AuthService {
       return false;
     }
   }
+
+  Future<void> updateOnboardingStatus(bool completed) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+      
+      await _firestore.collection('users').doc(user.uid).update({
+        'hasCompletedOnboarding': completed,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
 } 

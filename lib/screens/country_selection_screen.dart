@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -235,12 +236,14 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location services are disabled. Please enable them.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location services are disabled. Please enable them.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
 
@@ -248,33 +251,48 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permission denied'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location permission denied'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location permissions are permanently denied'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permissions are permanently denied'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: const Duration(seconds: 10),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Location detection timed out');
+        },
       );
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Geocoding timed out');
+        },
       );
 
       if (placemarks.isNotEmpty) {
@@ -283,13 +301,26 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
           setState(() {
             _selectedCountry = countryName;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Detected location: $countryName'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Detected location: $countryName'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
         } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Could not determine country from location'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      } else {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Could not determine country from location'),
@@ -298,17 +329,30 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
           );
         }
       }
+    } on TimeoutException {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location detection timed out. Please try again or select manually.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error detecting location: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error detecting location: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isDetectingLocation = false;
-      });
+      if (context.mounted) {
+        setState(() {
+          _isDetectingLocation = false;
+        });
+      }
     }
   }
 
@@ -330,19 +374,23 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save country selection'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save country selection'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (context.mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
 
-    if (mounted) {
+    if (context.mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => const GoalsSelectionScreen(),
@@ -394,9 +442,9 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
                       Container(
                         width: 12,
                         height: 12,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF1E3A8A),
+                          color: Color(0xFF1E3A8A),
                         ),
                       ),
                       const SizedBox(width: 8),
