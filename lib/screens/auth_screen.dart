@@ -212,6 +212,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           return 'Account is disabled. Please contact support.';
         case 'operation-not-allowed':
           return 'Sign in method not enabled.';
+        case 'rejected':
+          return 'Sign in was rejected. Please try again.';
+        case 'recaptcha-token-expired':
+          return 'Security check expired. Please try again.';
+        case 'recaptcha-token-invalid':
+          return 'Security check failed. Please try again.';
         default:
           return 'An error occurred. Please try again.';
       }
@@ -232,6 +238,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       return 'Invalid email address.';
     } else if (errorString.contains('network-request-failed')) {
       return 'Network error. Please check your connection.';
+    } else if (errorString.contains('rejected')) {
+      return 'Sign in was rejected. Please try again.';
     } else {
       return 'An error occurred. Please try again.';
     }

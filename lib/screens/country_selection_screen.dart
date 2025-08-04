@@ -16,7 +16,6 @@ class CountrySelectionScreen extends StatefulWidget {
 
 class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
   String? _selectedCountry;
   bool _isLoading = false;
   bool _isDetectingLocation = false;
@@ -219,13 +218,31 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
     {'name': 'Zimbabwe', 'code': 'ZW', 'flag': '🇿🇼'},
   ];
 
-  List<Map<String, String>> get _filteredCountries {
-    if (_searchQuery.isEmpty) {
-      return _countries;
-    }
-    return _countries.where((country) {
-      return country['name']!.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+  List<Map<String, String>> _filteredCountries = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredCountries = _countries;
+    _searchController.addListener(_filterCountries);
+  }
+
+  void _filterCountries() {
+    setState(() {
+      if (_searchController.text.isEmpty) {
+        _filteredCountries = _countries;
+      } else {
+        _filteredCountries = _countries.where((country) {
+          return country['name']!.toLowerCase().contains(_searchController.text.toLowerCase());
+        }).toList();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _detectLocation() async {
@@ -400,12 +417,6 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -461,14 +472,9 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
                   const SizedBox(height: 32),
                   Row(
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                          },
+                                                  Expanded(
+                              child: TextField(
+                                controller: _searchController,
                           decoration: InputDecoration(
                             hintText: 'Search countries...',
                             prefixIcon: const Icon(Icons.search),

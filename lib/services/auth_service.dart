@@ -14,7 +14,21 @@ class AuthService {
 
   Future<UserCredential?> signInWithEmailAndPassword(String email, String password) async {
     try {
-      return await _auth.signInWithEmailAndPassword(email: email, password: password);
+      UserCredential result = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      
+      final userDoc = await _firestore.collection('users').doc(result.user!.uid).get();
+      
+      if (!userDoc.exists) {
+        await _firestore.collection('users').doc(result.user!.uid).set({
+          'name': result.user!.displayName ?? 'User',
+          'email': email,
+          'createdAt': FieldValue.serverTimestamp(),
+          'photoURL': null,
+          'hasCompletedOnboarding': false,
+        });
+      }
+      
+      return result;
     } catch (e) {
       rethrow;
     }
@@ -53,7 +67,9 @@ class AuthService {
 
       UserCredential result = await _auth.signInWithCredential(credential);
       
-      if (result.additionalUserInfo?.isNewUser == true) {
+      final userDoc = await _firestore.collection('users').doc(result.user!.uid).get();
+      
+      if (!userDoc.exists) {
         await _firestore.collection('users').doc(result.user!.uid).set({
           'name': result.user!.displayName,
           'email': result.user!.email,
@@ -65,6 +81,14 @@ class AuthService {
       
       return result;
     } catch (e) {
+      String errorMessage = e.toString().toLowerCase();
+      if (errorMessage.contains('network_error') || 
+          errorMessage.contains('sign_in_failed') ||
+          errorMessage.contains('unknown') ||
+          errorMessage.contains('developer_error') ||
+          errorMessage.contains('invalid_account')) {
+        throw Exception('Google Sign-In is not available on this device. Please use email/password instead.');
+      }
       rethrow;
     }
   }
@@ -104,6 +128,13 @@ class AuthService {
       
       return result;
     } catch (e) {
+      String errorMessage = e.toString().toLowerCase();
+      if (errorMessage.contains('not_available') || 
+          errorMessage.contains('sign_in_failed') ||
+          errorMessage.contains('cancelled') ||
+          errorMessage.contains('not_supported')) {
+        throw Exception('Apple Sign-In is not available on this device. Please use email/password instead.');
+      }
       rethrow;
     }
   }

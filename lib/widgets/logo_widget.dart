@@ -55,9 +55,9 @@ class _LogoWidgetState extends State<LogoWidget>
           scale: _scaleAnimation.value,
           child: FadeTransition(
             opacity: _fadeAnimation,
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
+              children: [
                 Icon(
                   Icons.person,
                   size: 60,
