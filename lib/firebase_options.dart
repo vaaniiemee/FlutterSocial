@@ -77,4 +77,4 @@ class DefaultFirebaseOptions {
     projectId: 'meetplace-81e69',
     storageBucket: 'meetplace-81e69.firebasestorage.app',
   );
-} 
+}

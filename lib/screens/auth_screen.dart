@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/common/custom_button.dart';
+import '../widgets/common/custom_text_field.dart';
+import '../widgets/common/error_widget.dart';
+import '../widgets/common/loading_overlay.dart';
+import '../constants/app_constants.dart';
 import 'country_selection_screen.dart';
 
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
-  final AuthService _authService = AuthService();
+class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   
   bool _isLogin = true;
-  bool _isLoading = false;
   bool _obscurePassword = true;
   
   late AnimationController _animationController;
@@ -72,437 +75,288 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (_isLogin) {
-        await _authService.signInWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-      } else {
-        await _authService.createUserWithEmailAndPassword(
-          _emailController.text.trim(),
-          _passwordController.text,
-          _nameController.text.trim(),
-        );
-      }
-      
-      if (mounted) {
-        if (!_isLogin) {
+    if (_isLogin) {
+      await ref.read(authNotifierProvider.notifier).signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+    } else {
+      await ref.read(authNotifierProvider.notifier).createUserWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
+      );
+    }
+    
+    // Listen to auth state changes to navigate
+    ref.listen(authStateProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null && mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (context) => const CountrySelectionScreen(),
             ),
           );
-        } else {
-          Navigator.of(context).pop();
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = _getErrorMessage(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+      });
+    });
   }
 
   Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
+    await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+    
+    // Listen to auth state changes to navigate
+    ref.listen(authStateProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null && mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const CountrySelectionScreen(),
+            ),
+          );
+        }
+      });
     });
-
-    try {
-      final result = await _authService.signInWithGoogle();
-      if (result != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const CountrySelectionScreen(),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = _getErrorMessage(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   Future<void> _signInWithApple() async {
-    setState(() {
-      _isLoading = true;
+    await ref.read(authNotifierProvider.notifier).signInWithApple();
+    
+    // Listen to auth state changes to navigate
+    ref.listen(authStateProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null && mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => const CountrySelectionScreen(),
+            ),
+          );
+        }
+      });
     });
-
-    try {
-      final result = await _authService.signInWithApple();
-      if (result != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const CountrySelectionScreen(),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = _getErrorMessage(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
-  String _getErrorMessage(dynamic error) {
-    // Handle Firebase AuthException
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'user-not-found':
-          return 'User not found. Please check your email.';
-        case 'wrong-password':
-        case 'invalid-credential':
-          return 'Wrong password. Please try again.';
-        case 'email-already-in-use':
-          return 'Email already exists. Please sign in instead.';
-        case 'weak-password':
-          return 'Password is too weak. Use at least 6 characters.';
-        case 'invalid-email':
-          return 'Invalid email address.';
-        case 'network-request-failed':
-          return 'Network error. Please check your connection.';
-        case 'popup-closed-by-user':
-        case 'cancelled':
-          return 'Sign in cancelled.';
-        case 'too-many-requests':
-          return 'Too many attempts. Please try again later.';
-        case 'user-disabled':
-          return 'Account is disabled. Please contact support.';
-        case 'operation-not-allowed':
-          return 'Sign in method not enabled.';
-        case 'rejected':
-          return 'Sign in was rejected. Please try again.';
-        case 'recaptcha-token-expired':
-          return 'Security check expired. Please try again.';
-        case 'recaptcha-token-invalid':
-          return 'Security check failed. Please try again.';
-        default:
-          return 'An error occurred. Please try again.';
-      }
-    }
-    
-    // Handle string errors as fallback
-    String errorString = error.toString().toLowerCase();
-    
-    if (errorString.contains('user-not-found')) {
-      return 'User not found. Please check your email.';
-    } else if (errorString.contains('wrong-password') || errorString.contains('invalid-credential')) {
-      return 'Wrong password. Please try again.';
-    } else if (errorString.contains('email-already-in-use')) {
-      return 'Email already exists. Please sign in instead.';
-    } else if (errorString.contains('weak-password')) {
-      return 'Password is too weak. Use at least 6 characters.';
-    } else if (errorString.contains('invalid-email')) {
-      return 'Invalid email address.';
-    } else if (errorString.contains('network-request-failed')) {
-      return 'Network error. Please check your connection.';
-    } else if (errorString.contains('rejected')) {
-      return 'Sign in was rejected. Please try again.';
-    } else {
-      return 'An error occurred. Please try again.';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(isLoadingProvider);
+    
+    // Listen to auth errors
+    ref.listen(authErrorProvider, (previous, next) {
+      if (next != null && mounted) {
+        ErrorSnackBar.show(context, next);
+        ref.read(authErrorProvider.notifier).state = null;
+      }
+    });
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 60),
-                      
-                      const SizedBox(height: 24),
-                      
-                      Text(
-                        'MeetPlace',
-                        style: GoogleFonts.poppins(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                        textAlign: TextAlign.center,
+      backgroundColor: AppConstants.backgroundColor,
+      body: LoadingOverlay(
+        isLoading: isLoading,
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppConstants.spacingLarge),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: AppConstants.spacingXXLarge),
+                    
+                    Text(
+                      AppConstants.appName,
+                      style: GoogleFonts.poppins(
+                        fontSize: AppConstants.fontSizeHeading,
+                        fontWeight: AppConstants.fontWeightBold,
+                        color: AppConstants.textPrimary,
                       ),
-                      
-                      const SizedBox(height: 8),
-                      
-                      Text(
-                        _isLogin ? 'Welcome back!' : 'Create your account',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: Colors.black54,
-                        ),
-                        textAlign: TextAlign.center,
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: AppConstants.spacingSmall),
+                    
+                    Text(
+                      _isLogin ? 'Welcome back!' : 'Create your account',
+                      style: GoogleFonts.poppins(
+                        fontSize: AppConstants.fontSizeLarge,
+                        color: AppConstants.textSecondary,
                       ),
-                      
-                      const SizedBox(height: 48),
-                      
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: AppConstants.spacingXXLarge),
+                    
+                    Container(
+                      padding: const EdgeInsets.all(AppConstants.spacingLarge),
+                      decoration: BoxDecoration(
+                        color: AppConstants.backgroundColor,
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+                        boxShadow: AppConstants.elevatedShadow,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            if (!_isLogin) ...[
+                              CustomTextField(
+                                controller: _nameController,
+                                labelText: 'Full Name',
+                                prefixIcon: const Icon(Icons.person),
+                                isRequired: true,
+                                validator: (value) {
+                                  if (!_isLogin && (value == null || value.isEmpty)) {
+                                    return 'Please enter your name';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: AppConstants.spacingMedium),
+                            ],
+                            
+                            CustomTextField(
+                              controller: _emailController,
+                              labelText: 'Email',
+                              hintText: 'Enter your email',
+                              keyboardType: TextInputType.emailAddress,
+                              prefixIcon: const Icon(Icons.email),
+                              isRequired: true,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your email';
+                                }
+                                if (!value.contains('@')) {
+                                  return 'Please enter a valid email';
+                                }
+                                return null;
+                              },
+                            ),
+                            
+                            const SizedBox(height: AppConstants.spacingMedium),
+                            
+                            CustomTextField(
+                              controller: _passwordController,
+                              labelText: 'Password',
+                              hintText: 'Enter your password',
+                              obscureText: _obscurePassword,
+                              prefixIcon: const Icon(Icons.lock),
+                              isRequired: true,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your password';
+                                }
+                                if (value.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            
+                            const SizedBox(height: AppConstants.spacingLarge),
+                            
+                            CustomButton(
+                              text: _isLogin ? 'Sign In' : 'Sign Up',
+                              onPressed: _submitForm,
+                              isLoading: isLoading,
+                            ),
+                            
+                            const SizedBox(height: AppConstants.spacingMedium),
+                            
+                            TextButton(
+                              onPressed: _toggleAuthMode,
+                              child: Text(
+                                _isLogin
+                                    ? 'Don\'t have an account? Sign Up'
+                                    : 'Already have an account? Sign In',
+                                style: GoogleFonts.poppins(
+                                  color: AppConstants.primaryColor,
+                                  fontWeight: AppConstants.fontWeightMedium,
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              if (!_isLogin) ...[
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Full Name',
-                                    prefixIcon: const Icon(Icons.person),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (!_isLogin && (value == null || value.isEmpty)) {
-                                      return 'Please enter your name';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              
-                              TextFormField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: const Icon(Icons.email),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your email';
-                                  }
-                                  if (!value.contains('@')) {
-                                    return 'Please enter a valid email';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              TextFormField(
-                                controller: _passwordController,
-                                obscureText: _obscurePassword,
-                                decoration: InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: const Icon(Icons.lock),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              
-                              const SizedBox(height: 24),
-                              
-                              SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _submitForm,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1E3A8A),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : Text(
-                                          _isLogin ? 'Sign In' : 'Sign Up',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              TextButton(
-                                onPressed: _toggleAuthMode,
-                                child: Text(
-                                  _isLogin
-                                      ? 'Don\'t have an account? Sign Up'
-                                      : 'Already have an account? Sign In',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF1E3A8A),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      Text(
-                        'Or continue with',
-                        style: GoogleFonts.poppins(
-                          color: Colors.black54,
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: AppConstants.spacingXLarge),
+                    
+                    Text(
+                      'Or continue with',
+                      style: GoogleFonts.poppins(
+                        color: AppConstants.textSecondary,
+                        fontSize: AppConstants.fontSizeMedium,
                       ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 50,
-                              child: OutlinedButton.icon(
-                                onPressed: _isLoading ? null : _signInWithGoogle,
-                                icon: Image.asset(
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: AppConstants.spacingLarge),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Google',
+                            type: ButtonType.outline,
+                            onPressed: isLoading ? null : _signInWithGoogle,
+                            height: AppConstants.buttonHeightLarge,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
                                   'assets/icons/google.png',
-                                  height: 24,
+                                  height: AppConstants.iconSizeMedium,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.g_mobiledata, size: 24);
+                                    return const Icon(Icons.g_mobiledata, size: AppConstants.iconSizeMedium);
                                   },
                                 ),
-                                label: Text(
+                                const SizedBox(width: AppConstants.spacingSmall),
+                                Text(
                                   'Google',
-                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.black,
-                                  side: const BorderSide(color: Colors.black26),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: AppConstants.fontSizeMedium,
+                                    fontWeight: AppConstants.fontWeightSemiBold,
+                                    color: AppConstants.textPrimary,
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                          
-                          const SizedBox(width: 16),
-                          
-                          Expanded(
-                            child: SizedBox(
-                              height: 50,
-                              child: OutlinedButton.icon(
-                                onPressed: _isLoading ? null : _signInWithApple,
-                                icon: const Icon(Icons.apple, size: 24),
-                                label: Text(
+                        ),
+                        
+                        const SizedBox(width: AppConstants.spacingMedium),
+                        
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Apple',
+                            type: ButtonType.outline,
+                            onPressed: isLoading ? null : _signInWithApple,
+                            height: AppConstants.buttonHeightLarge,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.apple, size: AppConstants.iconSizeMedium),
+                                const SizedBox(width: AppConstants.spacingSmall),
+                                Text(
                                   'Apple',
-                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.black,
-                                  side: const BorderSide(color: Colors.black26),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: AppConstants.fontSizeLarge,
+                                    fontWeight: AppConstants.fontWeightSemiBold,
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

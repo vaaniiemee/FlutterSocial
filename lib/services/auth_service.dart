@@ -22,9 +22,13 @@ class AuthService {
         await _firestore.collection('users').doc(result.user!.uid).set({
           'name': result.user!.displayName ?? 'User',
           'email': email,
+          'username': email.split('@')[0],
           'createdAt': FieldValue.serverTimestamp(),
           'photoURL': null,
           'hasCompletedOnboarding': false,
+          'followersCount': 0,
+          'followingCount': 0,
+          'postsCount': 0,
         });
       }
       
@@ -43,9 +47,13 @@ class AuthService {
       await _firestore.collection('users').doc(result.user!.uid).set({
         'name': name,
         'email': email,
+        'username': email.split('@')[0], // Generate username from email
         'createdAt': FieldValue.serverTimestamp(),
         'photoURL': null,
         'hasCompletedOnboarding': false,
+        'followersCount': 0,
+        'followingCount': 0,
+        'postsCount': 0,
       });
       
       return result;
@@ -73,9 +81,13 @@ class AuthService {
         await _firestore.collection('users').doc(result.user!.uid).set({
           'name': result.user!.displayName,
           'email': result.user!.email,
+          'username': result.user!.email?.split('@')[0] ?? 'user',
           'photoURL': result.user!.photoURL,
           'createdAt': FieldValue.serverTimestamp(),
           'hasCompletedOnboarding': false,
+          'followersCount': 0,
+          'followingCount': 0,
+          'postsCount': 0,
         });
       }
       
@@ -120,9 +132,13 @@ class AuthService {
         await _firestore.collection('users').doc(result.user!.uid).set({
           'name': displayName.isNotEmpty ? displayName : 'Apple User',
           'email': result.user!.email,
+          'username': result.user!.email?.split('@')[0] ?? 'appleuser',
           'photoURL': null,
           'createdAt': FieldValue.serverTimestamp(),
           'hasCompletedOnboarding': false,
+          'followersCount': 0,
+          'followingCount': 0,
+          'postsCount': 0,
         });
       }
       

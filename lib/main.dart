@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
@@ -9,6 +8,9 @@ import 'screens/auth_screen.dart';
 import 'screens/country_selection_screen.dart';
 import 'screens/goals_selection_screen.dart';
 import 'screens/home_screen.dart';
+import 'constants/app_constants.dart';
+import 'providers/auth_provider.dart';
+import 'providers/user_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,114 +25,144 @@ void main() async {
       appleProvider: AppleProvider.debug,
     );
   } catch (e) {
-    // Ignore App Check errors in development/emulator
+    // App Check is optional for development
   }
   
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'MeetPlace',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E3A8A),
+          seedColor: AppConstants.primaryColor,
           brightness: Brightness.light,
         ),
         useMaterial3: true,
         fontFamily: GoogleFonts.poppins().fontFamily,
+        scaffoldBackgroundColor: AppConstants.backgroundColor,
+        appBarTheme: AppBarTheme(
+          backgroundColor: AppConstants.backgroundColor,
+          elevation: 0,
+          titleTextStyle: GoogleFonts.poppins(
+            fontSize: AppConstants.fontSizeXLarge,
+            fontWeight: AppConstants.fontWeightSemiBold,
+            color: AppConstants.textPrimary,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+            ),
+            elevation: 2,
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[50],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+            borderSide: const BorderSide(color: AppConstants.primaryColor, width: 2),
+          ),
+        ),
       ),
-      routes: {
-        '/': (context) => const AuthWrapper(),
-      },
+      home: const AuthWrapper(),
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Colors.white,
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-        
-        if (snapshot.hasData && snapshot.data != null) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    
+    return authState.when(
+      data: (user) {
+        if (user != null) {
           return const OnboardingWrapper();
         }
-        
         return const AuthScreen();
       },
+      loading: () => const Scaffold(
+        backgroundColor: AppConstants.backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+          ),
+        ),
+      ),
+      error: (error, stack) => Scaffold(
+        backgroundColor: AppConstants.backgroundColor,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: AppConstants.iconSizeXXLarge,
+                color: AppConstants.errorColor,
+              ),
+              const SizedBox(height: AppConstants.spacingLarge),
+              Text(
+                'Authentication Error',
+                style: GoogleFonts.poppins(
+                  fontSize: AppConstants.fontSizeXLarge,
+                  fontWeight: AppConstants.fontWeightSemiBold,
+                  color: AppConstants.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingSmall),
+              Text(
+                'Please restart the app',
+                style: GoogleFonts.poppins(
+                  fontSize: AppConstants.fontSizeMedium,
+                  color: AppConstants.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
-class OnboardingWrapper extends StatelessWidget {
+class OnboardingWrapper extends ConsumerWidget {
   const OnboardingWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: _getUserData(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Colors.white,
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            backgroundColor: Colors.white,
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Error loading user data',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacementNamed('/');
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userData = ref.watch(userDataProvider);
+    
+    return userData.when(
+      data: (data) {
+        if (data == null) {
           return const CountrySelectionScreen();
         }
-
-        final data = snapshot.data!.data() as Map<String, dynamic>;
+        
         final hasCountry = data['country'] != null;
         final hasGoal = data['goal'] != null;
 
@@ -142,24 +174,59 @@ class OnboardingWrapper extends StatelessWidget {
           return const CountrySelectionScreen();
         }
       },
+      loading: () => const Scaffold(
+        backgroundColor: AppConstants.backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+          ),
+        ),
+      ),
+      error: (error, stack) => Scaffold(
+        backgroundColor: AppConstants.backgroundColor,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: AppConstants.iconSizeXXLarge,
+                color: AppConstants.errorColor,
+              ),
+              const SizedBox(height: AppConstants.spacingLarge),
+              Text(
+                'Error loading user data',
+                style: GoogleFonts.poppins(
+                  fontSize: AppConstants.fontSizeXLarge,
+                  fontWeight: AppConstants.fontWeightSemiBold,
+                  color: AppConstants.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingSmall),
+              Text(
+                'Please try again',
+                style: GoogleFonts.poppins(
+                  fontSize: AppConstants.fontSizeMedium,
+                  color: AppConstants.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppConstants.spacingLarge),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(userDataProvider);
+                },
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.poppins(
+                    fontWeight: AppConstants.fontWeightSemiBold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-  }
-
-  Future<DocumentSnapshot> _getUserData() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('No user found');
-      
-      return await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get(const GetOptions(
-            source: Source.serverAndCache,
-            serverTimestampBehavior: ServerTimestampBehavior.estimate,
-          ));
-    } catch (e) {
-      throw Exception('Failed to load user data: $e');
-    }
   }
 }
 

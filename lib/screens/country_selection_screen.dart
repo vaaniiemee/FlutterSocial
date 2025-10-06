@@ -1,23 +1,27 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import '../providers/user_provider.dart';
+import '../widgets/common/custom_button.dart';
+import '../widgets/common/custom_text_field.dart';
+import '../widgets/common/error_widget.dart';
+import '../widgets/common/loading_overlay.dart';
+import '../constants/app_constants.dart';
 import 'goals_selection_screen.dart';
 
-class CountrySelectionScreen extends StatefulWidget {
+class CountrySelectionScreen extends ConsumerStatefulWidget {
   const CountrySelectionScreen({super.key});
 
   @override
-  State<CountrySelectionScreen> createState() => _CountrySelectionScreenState();
+  ConsumerState<CountrySelectionScreen> createState() => _CountrySelectionScreenState();
 }
 
-class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
+class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCountry;
-  bool _isLoading = false;
   bool _isDetectingLocation = false;
 
   final List<Map<String, String>> _countries = [
@@ -376,229 +380,160 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
   Future<void> _saveCountrySelection() async {
     if (_selectedCountry == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
-          'country': _selectedCountry,
-        });
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to save country selection'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (context.mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-
-    if (context.mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const GoalsSelectionScreen(),
-        ),
+    await ref.read(userNotifierProvider.notifier).updateCountry(_selectedCountry!);
+    
+    // Listen to the update result
+    ref.listen(userNotifierProvider, (previous, next) {
+      next.whenOrNull(
+        data: (_) {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const GoalsSelectionScreen(),
+              ),
+            );
+          }
+        },
+        error: (error, stack) {
+          if (mounted) {
+            ErrorSnackBar.show(context, 'Failed to save country selection');
+          }
+        },
       );
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final userUpdateState = ref.watch(userNotifierProvider);
+    
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  const SizedBox(height: 40),
-                  Text(
-                    'Specify your location',
-                    style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Select your country or determine location automatically',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF1E3A8A),
-                        ),
+      backgroundColor: AppConstants.backgroundColor,
+      body: LoadingOverlay(
+        isLoading: userUpdateState.isLoading,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppConstants.spacingLarge),
+                child: Column(
+                  children: [
+                    const SizedBox(height: AppConstants.spacingXXLarge),
+                    Text(
+                      'Specify your location',
+                      style: GoogleFonts.poppins(
+                        fontSize: AppConstants.fontSizeTitle,
+                        fontWeight: AppConstants.fontWeightBold,
+                        color: AppConstants.textPrimary,
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[300],
-                        ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppConstants.spacingSmall),
+                    Text(
+                      'Select your country or determine location automatically',
+                      style: GoogleFonts.poppins(
+                        fontSize: AppConstants.fontSizeLarge,
+                        color: AppConstants.textSecondary,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    children: [
-                                                  Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                          decoration: InputDecoration(
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppConstants.spacingXLarge),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppConstants.primaryColor,
+                          ),
+                        ),
+                        const SizedBox(width: AppConstants.spacingSmall),
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey[300],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppConstants.spacingXLarge),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomTextField(
+                            controller: _searchController,
                             hintText: 'Search countries...',
                             prefixIcon: const Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.grey),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        height: 56,
-                        child: ElevatedButton.icon(
+                        const SizedBox(width: AppConstants.spacingMedium),
+                        CustomButton(
+                          text: _isDetectingLocation ? 'Detecting...' : 'Current Location',
+                          icon: _isDetectingLocation ? null : Icons.my_location,
                           onPressed: _isDetectingLocation ? null : _detectLocation,
-                          icon: _isDetectingLocation
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Icon(Icons.my_location),
-                                                     label: Text(
-                             _isDetectingLocation ? 'Detecting...' : 'Current Location',
-                             style: GoogleFonts.poppins(
-                               fontSize: 14,
-                               fontWeight: FontWeight.w500,
-                             ),
-                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E3A8A),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
+                          isLoading: _isDetectingLocation,
+                          height: AppConstants.buttonHeightLarge,
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _filteredCountries.length,
-                itemBuilder: (context, index) {
-                  final country = _filteredCountries[index];
-                  final isSelected = _selectedCountry == country['name'];
-                  
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    leading: Text(
-                      country['flag']!,
-                      style: const TextStyle(fontSize: 24),
+                      ],
                     ),
-                    title: Text(
-                      country['name']!,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected ? const Color(0xFF1E3A8A) : Colors.black,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(
-                            Icons.check_circle,
-                            color: Color(0xFF1E3A8A),
-                            size: 24,
-                          )
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        _selectedCountry = country['name'];
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-            if (_selectedCountry != null)
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _saveCountrySelection,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E3A8A),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Text(
-                            'Continue',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
+                  ],
                 ),
               ),
-          ],
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _filteredCountries.length,
+                  itemBuilder: (context, index) {
+                    final country = _filteredCountries[index];
+                    final isSelected = _selectedCountry == country['name'];
+                    
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppConstants.spacingLarge, 
+                        vertical: AppConstants.spacingSmall,
+                      ),
+                      leading: Text(
+                        country['flag']!,
+                        style: const TextStyle(fontSize: AppConstants.iconSizeLarge),
+                      ),
+                      title: Text(
+                        country['name']!,
+                        style: GoogleFonts.poppins(
+                          fontSize: AppConstants.fontSizeLarge,
+                          fontWeight: isSelected ? AppConstants.fontWeightSemiBold : AppConstants.fontWeightNormal,
+                          color: isSelected ? AppConstants.primaryColor : AppConstants.textPrimary,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(
+                              Icons.check_circle,
+                              color: AppConstants.primaryColor,
+                              size: AppConstants.iconSizeLarge,
+                            )
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedCountry = country['name'];
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              if (_selectedCountry != null)
+                Padding(
+                  padding: const EdgeInsets.all(AppConstants.spacingLarge),
+                  child: CustomButton(
+                    text: 'Continue',
+                    onPressed: userUpdateState.isLoading ? null : _saveCountrySelection,
+                    isLoading: userUpdateState.isLoading,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
