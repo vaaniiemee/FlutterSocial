@@ -29,6 +29,13 @@ class AuthService {
           'followersCount': 0,
           'followingCount': 0,
           'postsCount': 0,
+          'bio': null,
+          'website': null,
+          'location': null,
+          'country': null,
+          'goal': null,
+          'interests': [],
+          'bannerURL': null,
         });
       }
       
@@ -54,6 +61,13 @@ class AuthService {
         'followersCount': 0,
         'followingCount': 0,
         'postsCount': 0,
+        'bio': null,
+        'website': null,
+        'location': null,
+        'country': null,
+        'goal': null,
+        'interests': [],
+        'bannerURL': null,
       });
       
       return result;
@@ -88,6 +102,13 @@ class AuthService {
           'followersCount': 0,
           'followingCount': 0,
           'postsCount': 0,
+          'bio': null,
+          'website': null,
+          'location': null,
+          'country': null,
+          'goal': null,
+          'interests': [],
+          'bannerURL': null,
         });
       }
       

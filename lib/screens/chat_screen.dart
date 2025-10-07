@@ -311,7 +311,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
         return ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             final message = snapshot.data!.docs[index];
@@ -330,7 +330,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final time = timestamp?.toDate();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
@@ -356,6 +356,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
           Flexible(
             child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
               padding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,

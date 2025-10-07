@@ -70,60 +70,68 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
 
     try {
       final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-      if (currentUserId == null) return;
-
-      final followRef = FirebaseFirestore.instance
-          .collection('follows')
-          .doc('${currentUserId}_${widget.userId}');
-
-      if (_isFollowing) {
-        // Unfollow
-        await followRef.delete();
-        
-        // Update follower count
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .update({
-          'followersCount': FieldValue.increment(-1),
-        });
-        
-        // Update following count
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUserId)
-            .update({
-          'followingCount': FieldValue.increment(-1),
-        });
-      } else {
-        // Follow
-        await followRef.set({
-          'followerId': currentUserId,
-          'followingId': widget.userId,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        
-        // Update follower count
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .update({
-          'followersCount': FieldValue.increment(1),
-        });
-        
-        // Update following count
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUserId)
-            .update({
-          'followingCount': FieldValue.increment(1),
-        });
+      if (currentUserId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please log in to follow users'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
       }
+
+      // Use transaction for data consistency
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final followRef = FirebaseFirestore.instance
+            .collection('follows')
+            .doc('${currentUserId}_${widget.userId}');
+        
+        final currentUserRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId);
+        final targetUserRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.userId);
+
+        if (_isFollowing) {
+          // Unfollow
+          transaction.delete(followRef);
+          transaction.update(targetUserRef, {
+            'followersCount': FieldValue.increment(-1),
+          });
+          transaction.update(currentUserRef, {
+            'followingCount': FieldValue.increment(-1),
+          });
+        } else {
+          // Follow
+          transaction.set(followRef, {
+            'followerId': currentUserId,
+            'followingId': widget.userId,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          transaction.update(targetUserRef, {
+            'followersCount': FieldValue.increment(1),
+          });
+          transaction.update(currentUserRef, {
+            'followingCount': FieldValue.increment(1),
+          });
+        }
+      });
 
       if (mounted) {
         setState(() {
           _isFollowing = !_isFollowing;
         });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isFollowing ? 'Following user' : 'Unfollowed user'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -146,36 +154,7 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConstants.backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          widget.userData['name'] ?? 'Profile',
-          style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeLarge,
-            fontWeight: AppConstants.fontWeightSemiBold,
-            color: AppConstants.textPrimary,
-          ),
-        ),
-        backgroundColor: AppConstants.backgroundColor,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatScreen(
-                    userId: widget.userId,
-                    userData: widget.userData,
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.chat),
-            tooltip: 'Start Chat',
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
@@ -201,154 +180,194 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
 
           final userData = snapshot.data!.data() as Map<String, dynamic>;
           
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildProfileHeader(userData),
-                _buildProfileStats(userData),
-                _buildActionButtons(),
-                _buildTabBar(),
-                _buildTabContent(userData),
-              ],
-            ),
+          return CustomScrollView(
+            slivers: [
+              _buildSliverAppBar(userData),
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    _buildProfileInfo(userData),
+                    _buildActionButtons(),
+                    _buildTabBar(),
+                    _buildTabContent(userData),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildProfileHeader(Map<String, dynamic> userData) {
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(AppConstants.borderRadiusLarge),
-          bottomRight: Radius.circular(AppConstants.borderRadiusLarge),
-        ),
-        image: userData['bannerURL'] != null
-            ? DecorationImage(
-                image: NetworkImage(userData['bannerURL'] as String),
-                fit: BoxFit.cover,
-              )
-            : null,
-        color: userData['bannerURL'] == null 
-            ? AppConstants.primaryColor.withValues(alpha: 0.1)
-            : null,
-      ),
-      child: Stack(
-        children: [
-          if (userData['bannerURL'] == null)
-            Center(
-              child: Icon(
-                Icons.landscape,
-                size: 60,
-                color: AppConstants.primaryColor.withValues(alpha: 0.3),
-              ),
-            ),
-          Positioned(
-            bottom: -50,
-            left: 20,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
+  Widget _buildSliverAppBar(Map<String, dynamic> userData) {
+    return SliverAppBar(
+      expandedHeight: 200,
+      floating: false,
+      pinned: true,
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(
+            image: userData['bannerURL'] != null && userData['bannerURL'].toString().isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(userData['bannerURL'] as String),
+                    fit: BoxFit.cover,
+                    onError: (exception, stackTrace) {
+                      // Handle image loading error
+                    },
+                  )
+                : null,
+            color: userData['bannerURL'] == null || userData['bannerURL'].toString().isEmpty
+                ? Colors.grey[100]
+                : null,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.3),
                 ],
               ),
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.1),
-                backgroundImage: userData['photoURL'] != null && userData['photoURL'].toString().isNotEmpty
-                    ? NetworkImage(userData['photoURL'] as String)
-                    : null,
-                child: userData['photoURL'] == null || userData['photoURL'].toString().isEmpty
-                    ? Icon(
-                        Icons.person,
-                        size: 50,
-                        color: AppConstants.primaryColor,
-                      )
-                    : null,
-              ),
+            ),
+            child: Stack(
+              children: [
+                if (userData['bannerURL'] == null || userData['bannerURL'].toString().isEmpty)
+                  Center(
+                    child: Icon(
+                      Icons.landscape,
+                      size: 60,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                Positioned(
+                  bottom: -40,
+                  left: 20,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 45,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: userData['photoURL'] != null && userData['photoURL'].toString().isNotEmpty
+                          ? NetworkImage(userData['photoURL'] as String)
+                          : null,
+                      child: userData['photoURL'] == null || userData['photoURL'].toString().isEmpty
+                          ? Icon(
+                              Icons.person,
+                              size: 45,
+                              color: Colors.grey[600],
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildProfileStats(Map<String, dynamic> userData) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+  Widget _buildProfileInfo(Map<String, dynamic> userData) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            userData['name'] ?? 'Unknown User',
-            style: GoogleFonts.poppins(
-              fontSize: AppConstants.fontSizeXXLarge,
-              fontWeight: AppConstants.fontWeightBold,
-              color: AppConstants.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '@${userData['username'] ?? 'unknown'}',
-            style: GoogleFonts.poppins(
-              fontSize: AppConstants.fontSizeLarge,
-              color: AppConstants.textSecondary,
-            ),
-          ),
-          if (userData['bio'] != null && userData['bio'].isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              userData['bio'],
-              style: GoogleFonts.poppins(
-                fontSize: AppConstants.fontSizeMedium,
-                color: AppConstants.textPrimary,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userData['name'] ?? 'Unknown User',
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '@${userData['username'] ?? 'unknown'}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-          if (userData['website'] != null && userData['website'].isNotEmpty) ...[
+              if (userData['bio'] != null && userData['bio'].toString().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  userData['bio'].toString(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.black,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (userData['website'] != null && userData['website'].toString().isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
                 Icon(
                   Icons.link,
                   size: 16,
-                  color: AppConstants.textSecondary,
+                  color: Colors.blue[600],
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  userData['website'],
-                  style: GoogleFonts.poppins(
-                    fontSize: AppConstants.fontSizeMedium,
-                    color: AppConstants.primaryColor,
+                Expanded(
+                  child: Text(
+                    userData['website'].toString(),
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.blue[600],
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ],
-          if (userData['location'] != null && userData['location'].isNotEmpty) ...[
+          if (userData['location'] != null && userData['location'].toString().isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
                 Icon(
                   Icons.location_on,
                   size: 16,
-                  color: AppConstants.textSecondary,
+                  color: Colors.grey[600],
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  userData['location'],
-                  style: GoogleFonts.poppins(
-                    fontSize: AppConstants.fontSizeMedium,
-                    color: AppConstants.textSecondary,
+                Expanded(
+                  child: Text(
+                    userData['location'].toString(),
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -384,16 +403,16 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeLarge,
-            fontWeight: AppConstants.fontWeightBold,
-            color: AppConstants.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
         Text(
           label,
           style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeMedium,
-            color: AppConstants.textSecondary,
+            fontSize: 14,
+            color: Colors.grey[600],
           ),
         ),
       ],
@@ -409,19 +428,23 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
           Expanded(
+            flex: 2,
             child: CustomButton(
               text: _isFollowing ? 'Following' : 'Follow',
               type: _isFollowing ? ButtonType.outline : ButtonType.primary,
               onPressed: _isLoading ? null : _toggleFollow,
               isLoading: _isLoading,
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
+            flex: 1,
             child: CustomButton(
               text: 'Message',
               type: ButtonType.outline,
@@ -436,6 +459,8 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
                   ),
                 );
               },
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
           ),
         ],
@@ -448,18 +473,18 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
       margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
           color: AppConstants.primaryColor,
-          borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+          borderRadius: BorderRadius.circular(8),
         ),
         labelColor: Colors.white,
-        unselectedLabelColor: AppConstants.textSecondary,
+        unselectedLabelColor: Colors.grey[600],
         labelStyle: GoogleFonts.poppins(
-          fontWeight: AppConstants.fontWeightSemiBold,
+          fontWeight: FontWeight.w600,
         ),
         tabs: const [
           Tab(text: 'Posts'),
@@ -472,7 +497,7 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
 
   Widget _buildTabContent(Map<String, dynamic> userData) {
     return SizedBox(
-      height: 400,
+      height: MediaQuery.of(context).size.height * 0.4,
       child: TabBarView(
         controller: _tabController,
         children: [
@@ -485,15 +510,21 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
   }
 
   Widget _buildPostsTab(Map<String, dynamic> userData) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
           .collection('posts')
           .where('userId', isEqualTo: widget.userId)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+          .limit(20)
+          .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading posts: ${snapshot.error}'),
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -510,8 +541,16 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
                 Text(
                   'No posts yet',
                   style: GoogleFonts.poppins(
-                    fontSize: AppConstants.fontSizeLarge,
-                    color: AppConstants.textSecondary,
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This user hasn\'t shared any posts yet',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[500],
                   ),
                 ),
               ],
@@ -519,16 +558,32 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
           );
         }
 
+        // Sort posts by creation date on client side
+        final posts = snapshot.data!.docs.toList()
+          ..sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            final aTime = aData['createdAt'] as Timestamp?;
+            final bTime = bData['createdAt'] as Timestamp?;
+            
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            
+            return bTime.compareTo(aTime); // Descending order
+          });
+
         return GridView.builder(
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 2,
             mainAxisSpacing: 2,
+            childAspectRatio: 1,
           ),
-          itemCount: snapshot.data!.docs.length,
+          itemCount: posts.length,
           itemBuilder: (context, index) {
-            final post = snapshot.data!.docs[index];
+            final post = posts[index];
             final postData = post.data() as Map<String, dynamic>;
             
             return Container(
@@ -536,25 +591,48 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: postData['imageUrls'] != null && 
-                     (postData['imageUrls'] as List).isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: postData['imageUrls'] != null && 
+                       (postData['imageUrls'] as List).isNotEmpty
+                    ? Image.network(
                         (postData['imageUrls'] as List).first,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.image,
-                            color: Colors.grey[400],
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: Colors.grey[200],
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / 
+                                      loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
                           );
                         },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[200],
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey[400],
+                              size: 24,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        color: Colors.grey[200],
+                        child: Icon(
+                          Icons.image,
+                          color: Colors.grey[400],
+                          size: 24,
+                        ),
                       ),
-                    )
-                  : Icon(
-                      Icons.image,
-                      color: Colors.grey[400],
-                    ),
+              ),
             );
           },
         );
@@ -579,8 +657,16 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
             Text(
               'No interests added',
               style: GoogleFonts.poppins(
-                fontSize: AppConstants.fontSizeLarge,
-                color: AppConstants.textSecondary,
+                fontSize: 18,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This user hasn\'t added any interests yet',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey[500],
               ),
             ),
           ],
@@ -588,27 +674,28 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
       );
     }
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: 12,
+        runSpacing: 12,
         children: interests.map((interest) {
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: AppConstants.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: AppConstants.primaryColor.withValues(alpha: 0.3),
+                width: 1,
               ),
             ),
             child: Text(
               interest,
               style: GoogleFonts.poppins(
-                fontSize: AppConstants.fontSizeMedium,
+                fontSize: 14,
                 color: AppConstants.primaryColor,
-                fontWeight: AppConstants.fontWeightMedium,
+                fontWeight: FontWeight.w500,
               ),
             ),
           );
@@ -618,42 +705,96 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
   }
 
   Widget _buildAboutTab(Map<String, dynamic> userData) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildAboutItem('Name', userData['name'] ?? 'Not provided'),
-          _buildAboutItem('Username', '@${userData['username'] ?? 'unknown'}'),
-          _buildAboutItem('Bio', userData['bio'] ?? 'No bio available'),
-          _buildAboutItem('Website', userData['website'] ?? 'Not provided'),
-          _buildAboutItem('Location', userData['location'] ?? 'Not provided'),
-          _buildAboutItem('Joined', _formatDate(userData['createdAt'])),
+          _buildAboutItem(
+            'Name', 
+            userData['name'] ?? 'Not provided',
+            Icons.person,
+          ),
+          _buildAboutItem(
+            'Username', 
+            '@${userData['username'] ?? 'unknown'}',
+            Icons.alternate_email,
+          ),
+          _buildAboutItem(
+            'Bio', 
+            userData['bio']?.toString() ?? 'No bio available',
+            Icons.info,
+          ),
+          _buildAboutItem(
+            'Website', 
+            userData['website']?.toString() ?? 'Not provided',
+            Icons.link,
+          ),
+          _buildAboutItem(
+            'Location', 
+            userData['location']?.toString() ?? 'Not provided',
+            Icons.location_on,
+          ),
+          _buildAboutItem(
+            'Joined', 
+            _formatDate(userData['createdAt']),
+            Icons.calendar_today,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAboutItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+  Widget _buildAboutItem(String label, String value, IconData icon) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey[200]!,
+          width: 1,
+        ),
+      ),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: AppConstants.fontSizeMedium,
-              fontWeight: AppConstants.fontWeightSemiBold,
-              color: AppConstants.textSecondary,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: AppConstants.primaryColor,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: AppConstants.fontSizeMedium,
-              color: AppConstants.textPrimary,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.black,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

@@ -47,12 +47,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Profile',
-          style: GoogleFonts.poppins(
-            fontWeight: AppConstants.fontWeightSemiBold,
-          ),
-        ),
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
         actions: [
@@ -306,34 +300,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   Widget _buildProfileActions(Map<String, dynamic> data) {
     return Container(
       padding: const EdgeInsets.all(AppConstants.spacingLarge),
-      child: Row(
-        children: [
-          Expanded(
-            child: CustomButton(
-              text: 'Edit Profile',
-              type: ButtonType.outline,
-              icon: Icons.edit,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const EditProfileScreen(),
-                  ),
-                );
-              },
+      child: CustomButton(
+        text: 'Edit Profile',
+        type: ButtonType.outline,
+        icon: Icons.edit,
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const EditProfileScreen(),
             ),
-          ),
-          const SizedBox(width: AppConstants.spacingMedium),
-          Expanded(
-            child: CustomButton(
-              text: 'Share Profile',
-              type: ButtonType.outline,
-              icon: Icons.share,
-              onPressed: () {
-                InfoSnackBar.show(context, 'Share profile feature coming soon!');
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -373,7 +350,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
       stream: FirebaseFirestore.instance
           .collection('posts')
           .where('userId', isEqualTo: data['uid'])
-          .orderBy('createdAt', descending: true)
+          .limit(20)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -390,7 +367,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
           );
         }
 
-        final posts = snapshot.data?.docs ?? [];
+        final allPosts = snapshot.data?.docs ?? [];
+        
+        // Sort posts by creation date on client side
+        final posts = allPosts.toList()
+          ..sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            final aTime = aData['createdAt'] as Timestamp?;
+            final bTime = bData['createdAt'] as Timestamp?;
+            
+            if (aTime == null && bTime == null) return 0;
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            
+            return bTime.compareTo(aTime); // Descending order
+          });
 
         if (posts.isEmpty) {
           return Center(

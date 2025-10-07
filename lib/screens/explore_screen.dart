@@ -11,14 +11,6 @@ class ExploreScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Explore',
-          style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeXLarge,
-            fontWeight: AppConstants.fontWeightSemiBold,
-            color: AppConstants.textPrimary,
-          ),
-        ),
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
       ),

@@ -75,31 +75,45 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStat
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_isLogin) {
-      await ref.read(authNotifierProvider.notifier).signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-    } else {
-      await ref.read(authNotifierProvider.notifier).createUserWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
-      );
+    try {
+      if (_isLogin) {
+        await ref.read(authNotifierProvider.notifier).signInWithEmailAndPassword(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+      } else {
+        await ref.read(authNotifierProvider.notifier).createUserWithEmailAndPassword(
+          _emailController.text.trim(),
+          _passwordController.text,
+          _nameController.text.trim(),
+        );
+      }
+      
+      // Listen to auth state changes to navigate
+      if (mounted) {
+        ref.listen(authStateProvider, (previous, next) {
+          next.whenData((user) {
+            if (user != null && mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => const CountrySelectionScreen(),
+                ),
+              );
+            }
+          });
+        });
+      }
+    } catch (e) {
+      // Handle error silently or show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-    
-    // Listen to auth state changes to navigate
-    ref.listen(authStateProvider, (previous, next) {
-      next.whenData((user) {
-        if (user != null && mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => const CountrySelectionScreen(),
-            ),
-          );
-        }
-      });
-    });
   }
 
   Future<void> _signInWithGoogle() async {
@@ -304,12 +318,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStat
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Image.asset(
-                                  'assets/icons/google.png',
-                                  height: AppConstants.iconSizeMedium,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.g_mobiledata, size: AppConstants.iconSizeMedium);
-                                  },
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(2),
+                                    color: Colors.white,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: Image.network(
+                                      'https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png',
+                                      width: 16,
+                                      height: 16,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Icon(
+                                          Icons.g_mobiledata,
+                                          size: 16,
+                                          color: Colors.red,
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: AppConstants.spacingSmall),
                                 Text(

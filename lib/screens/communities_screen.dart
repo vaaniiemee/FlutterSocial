@@ -40,14 +40,6 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Communities',
-          style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeXLarge,
-            fontWeight: AppConstants.fontWeightSemiBold,
-            color: AppConstants.textPrimary,
-          ),
-        ),
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
         bottom: TabBar(
@@ -218,74 +210,68 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(AppConstants.spacingMedium),
-        leading: CircleAvatar(
-          radius: 30,
-          backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.1),
-          backgroundImage: userData['photoURL'] != null
-              ? NetworkImage(userData['photoURL'] as String)
-              : null,
-          child: userData['photoURL'] == null
-              ? Text(
-                  (userData['name'] ?? 'U')[0].toUpperCase(),
-                  style: GoogleFonts.poppins(
-                    fontSize: AppConstants.fontSizeLarge,
-                    fontWeight: AppConstants.fontWeightSemiBold,
-                    color: AppConstants.primaryColor,
-                  ),
-                )
-              : null,
-        ),
-        title: Text(
-          userData['name'] ?? 'Unknown User',
-          style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeLarge,
-            fontWeight: AppConstants.fontWeightSemiBold,
-            color: AppConstants.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          '@${userData['username'] ?? 'unknown'}',
-          style: GoogleFonts.poppins(
-            fontSize: AppConstants.fontSizeMedium,
-            color: AppConstants.textSecondary,
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UserProfileViewScreen(
-                      userId: userId,
-                      userData: userData,
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.person),
-              tooltip: 'View Profile',
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserProfileViewScreen(
+                userId: userId,
+                userData: userData,
+              ),
             ),
-            IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatScreen(
-                      userId: userId,
-                      userData: userData,
+          );
+        },
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(AppConstants.spacingMedium),
+          leading: CircleAvatar(
+            radius: 30,
+            backgroundColor: AppConstants.primaryColor.withValues(alpha: 0.1),
+            backgroundImage: userData['photoURL'] != null
+                ? NetworkImage(userData['photoURL'] as String)
+                : null,
+            child: userData['photoURL'] == null
+                ? Text(
+                    (userData['name'] ?? 'U')[0].toUpperCase(),
+                    style: GoogleFonts.poppins(
+                      fontSize: AppConstants.fontSizeLarge,
+                      fontWeight: AppConstants.fontWeightSemiBold,
+                      color: AppConstants.primaryColor,
                     ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.chat),
-              tooltip: 'Start Chat',
+                  )
+                : null,
+          ),
+          title: Text(
+            userData['name'] ?? 'Unknown User',
+            style: GoogleFonts.poppins(
+              fontSize: AppConstants.fontSizeLarge,
+              fontWeight: AppConstants.fontWeightSemiBold,
+              color: AppConstants.textPrimary,
             ),
-          ],
+          ),
+          subtitle: Text(
+            '@${userData['username'] ?? 'unknown'}',
+            style: GoogleFonts.poppins(
+              fontSize: AppConstants.fontSizeMedium,
+              color: AppConstants.textSecondary,
+            ),
+          ),
+          trailing: IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    userId: userId,
+                    userData: userData,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.chat),
+            tooltip: 'Start Chat',
+          ),
         ),
       ),
     );
@@ -345,7 +331,7 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
         final chats = snapshot.data!.docs;
 
         return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingMedium),
+          padding: const EdgeInsets.all(AppConstants.spacingLarge),
           itemCount: chats.length,
           itemBuilder: (context, index) {
             final chat = chats[index];
