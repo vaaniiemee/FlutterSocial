@@ -191,7 +191,7 @@ class SettingsScreen extends ConsumerWidget {
             color: AppConstants.textSecondary,
           ),
         ),
-        trailing: Icon(
+        trailing: const Icon(
           Icons.arrow_forward_ios,
           size: AppConstants.iconSizeSmall,
           color: AppConstants.textTertiary,
@@ -272,23 +272,46 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await ref.read(authNotifierProvider.notifier).signOut();
+          Consumer(
+            builder: (context, ref, child) {
+              final authState = ref.watch(authNotifierProvider);
+              final isLoading = authState.isLoading;
               
-              if (context.mounted) {
-                SuccessSnackBar.show(context, 'Signed out successfully');
-                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-              }
+              return TextButton(
+                onPressed: isLoading ? null : () async {
+                  Navigator.of(context).pop();
+                  
+                  try {
+                    await ref.read(authNotifierProvider.notifier).signOut();
+                    
+                    if (context.mounted) {
+                      SuccessSnackBar.show(context, 'Signed out successfully');
+                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ErrorSnackBar.show(context, 'Failed to sign out. Please try again.');
+                    }
+                  }
+                },
+                child: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.errorColor),
+                        ),
+                      )
+                    : Text(
+                        'Sign Out',
+                        style: GoogleFonts.poppins(
+                          color: AppConstants.errorColor,
+                          fontWeight: AppConstants.fontWeightSemiBold,
+                        ),
+                      ),
+              );
             },
-            child: Text(
-              'Sign Out',
-              style: GoogleFonts.poppins(
-                color: AppConstants.errorColor,
-                fontWeight: AppConstants.fontWeightSemiBold,
-              ),
-            ),
           ),
         ],
       ),

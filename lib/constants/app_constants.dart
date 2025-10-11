@@ -93,4 +93,23 @@ class AppConstants {
   static const String successLocationDetected = 'Location detected successfully';
   static const String successDataSaved = 'Data saved successfully';
   static const String successSignedOut = 'Signed out successfully';
+  
+  // Post Categories
+  static const List<Map<String, dynamic>> postCategories = [
+    {'id': 'buy_sell', 'name': 'Buy/Sell', 'icon': Icons.shopping_cart},
+    {'id': 'home', 'name': 'Home', 'icon': Icons.home},
+    {'id': 'cars', 'name': 'Cars', 'icon': Icons.directions_car},
+    {'id': 'documents', 'name': 'Documents', 'icon': Icons.description},
+    {'id': 'news', 'name': 'News', 'icon': Icons.newspaper},
+    {'id': 'help', 'name': 'Help', 'icon': Icons.help_outline},
+    {'id': 'jobs', 'name': 'Jobs', 'icon': Icons.work},
+    {'id': 'events', 'name': 'Events', 'icon': Icons.event},
+    {'id': 'food', 'name': 'Food', 'icon': Icons.restaurant},
+    {'id': 'travel', 'name': 'Travel', 'icon': Icons.flight},
+    {'id': 'education', 'name': 'Education', 'icon': Icons.school},
+    {'id': 'health', 'name': 'Health', 'icon': Icons.local_hospital},
+    {'id': 'technology', 'name': 'Technology', 'icon': Icons.computer},
+    {'id': 'sports', 'name': 'Sports', 'icon': Icons.sports},
+    {'id': 'entertainment', 'name': 'Entertainment', 'icon': Icons.movie},
+  ];
 }

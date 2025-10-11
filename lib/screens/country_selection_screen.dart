@@ -257,7 +257,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Location services are disabled. Please enable them.'),
@@ -272,7 +272,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Location permission denied'),
@@ -285,7 +285,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
       }
 
       if (permission == LocationPermission.deniedForever) {
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Location permissions are permanently denied'),
@@ -322,7 +322,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
           setState(() {
             _selectedCountry = countryName;
           });
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Detected location: $countryName'),
@@ -331,7 +331,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
             );
           }
         } else {
-          if (context.mounted) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Could not determine country from location'),
@@ -341,7 +341,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
           }
         }
       } else {
-        if (context.mounted) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Could not determine country from location'),
@@ -351,7 +351,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
         }
       }
     } on TimeoutException {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Location detection timed out. Please try again or select manually.'),
@@ -360,7 +360,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
         );
       }
     } catch (e) {
-      if (context.mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error detecting location: $e'),
@@ -369,7 +369,7 @@ class _CountrySelectionScreenState extends ConsumerState<CountrySelectionScreen>
         );
       }
     } finally {
-      if (context.mounted) {
+      if (mounted) {
         setState(() {
           _isDetectingLocation = false;
         });

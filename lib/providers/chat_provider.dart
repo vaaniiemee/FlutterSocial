@@ -106,7 +106,7 @@ class ChatService {
   Stream<QuerySnapshot> getUserChats() {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) {
-      return Stream.empty();
+      return const Stream.empty();
     }
 
     return _firestore
@@ -128,13 +128,13 @@ class ChatService {
   // Search users
   Stream<QuerySnapshot> searchUsers(String query) {
     if (query.isEmpty) {
-      return Stream.empty();
+      return const Stream.empty();
     }
 
     return _firestore
         .collection('users')
         .where('username', isGreaterThanOrEqualTo: query)
-        .where('username', isLessThan: query + 'z')
+        .where('username', isLessThan: '${query}z')
         .limit(20)
         .snapshots();
   }

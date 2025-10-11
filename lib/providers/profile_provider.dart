@@ -4,17 +4,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'user_provider.dart';
 
 final profileNotifierProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<void>>((ref) {
-  return ProfileNotifier();
+  return ProfileNotifier(ref);
 });
 
 final interestsProvider = StateProvider<List<String>>((ref) => []);
 final selectedInterestsProvider = StateProvider<Set<String>>((ref) => {});
 
 class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
-  ProfileNotifier() : super(const AsyncValue.data(null));
+  ProfileNotifier(this._ref) : super(const AsyncValue.data(null));
 
+  final Ref _ref;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _imagePicker = ImagePicker();
@@ -41,10 +43,15 @@ class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
       }
       
       if (username != null) {
-        // Check if username is available
-        final usernameExists = await _checkUsernameAvailability(username);
-        if (usernameExists) {
-          throw Exception('Username is already taken');
+        // Check if username is available (only if it's different from current username)
+        final currentUserData = await _firestore.collection('users').doc(user.uid).get();
+        final currentUsername = currentUserData.data()?['username'];
+        
+        if (username != currentUsername) {
+          final usernameExists = await _checkUsernameAvailability(username);
+          if (usernameExists) {
+            throw Exception('Username is already taken');
+          }
         }
         updateData['username'] = username;
       }
@@ -56,6 +63,8 @@ class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
       
       if (updateData.isNotEmpty) {
         await _firestore.collection('users').doc(user.uid).update(updateData);
+        // Invalidate user data to refresh UI
+        _ref.invalidate(userDataProvider);
       }
       
       state = const AsyncValue.data(null);
@@ -81,9 +90,23 @@ class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
         isBanner ? 'bannerURL' : 'photoURL': downloadUrl,
       });
       
+      // Invalidate user data to refresh UI
+      _ref.invalidate(userDataProvider);
+      
       return downloadUrl;
     } catch (e) {
-      throw Exception('Failed to upload image: $e');
+      // Handle specific Firebase Storage errors
+      if (e.toString().contains('permission-denied')) {
+        throw Exception('Permission denied. Please check your account permissions.');
+      } else if (e.toString().contains('unauthenticated')) {
+        throw Exception('Please sign in again to upload images.');
+      } else if (e.toString().contains('network')) {
+        throw Exception('Network error. Please check your internet connection.');
+      } else if (e.toString().contains('quota')) {
+        throw Exception('Storage quota exceeded. Please try a smaller image.');
+      } else {
+        throw Exception('Failed to upload image: ${e.toString()}');
+      }
     }
   }
 
@@ -101,7 +124,16 @@ class ProfileNotifier extends StateNotifier<AsyncValue<void>> {
       }
       return null;
     } catch (e) {
-      throw Exception('Failed to pick image: $e');
+      // Handle specific image picker errors
+      if (e.toString().contains('Permission denied')) {
+        throw Exception('Camera/Gallery permission denied. Please enable permissions in settings.');
+      } else if (e.toString().contains('No image selected')) {
+        return null; // User cancelled, not an error
+      } else if (e.toString().contains('Image source not available')) {
+        throw Exception('Gallery is not available. Please try again.');
+      } else {
+        throw Exception('Failed to pick image: ${e.toString()}');
+      }
     }
   }
 

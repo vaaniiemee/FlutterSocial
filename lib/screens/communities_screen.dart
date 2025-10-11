@@ -92,38 +92,6 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
     );
   }
 
-  Widget _buildEmptySearchState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search,
-            size: 80,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: AppConstants.spacingLarge),
-          Text(
-            'Search for users',
-            style: GoogleFonts.poppins(
-              fontSize: AppConstants.fontSizeLarge,
-              fontWeight: AppConstants.fontWeightMedium,
-              color: AppConstants.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppConstants.spacingSmall),
-          Text(
-            'Find and connect with other users',
-            style: GoogleFonts.poppins(
-              fontSize: AppConstants.fontSizeMedium,
-              color: AppConstants.textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSearchResults() {
     return StreamBuilder<QuerySnapshot>(
       stream: _searchQuery.isEmpty
@@ -134,7 +102,7 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
           : FirebaseFirestore.instance
               .collection('users')
               .where('username', isGreaterThanOrEqualTo: _searchQuery)
-              .where('username', isLessThan: _searchQuery + 'z')
+              .where('username', isLessThan: '${_searchQuery}z')
               .limit(20)
               .snapshots(),
       builder: (context, snapshot) {
@@ -427,7 +395,7 @@ class _CommunitiesScreenState extends ConsumerState<CommunitiesScreen>
                 ),
                 if (chatData['unreadCount'] != null && 
                     chatData['unreadCount'] is Map && 
-                    (chatData['unreadCount'] as Map).values.any((count) => count > 0))
+                    (chatData['unreadCount'] as Map).values.any((unreadCount) => unreadCount > 0))
                   Container(
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

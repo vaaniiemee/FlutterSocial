@@ -29,7 +29,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   File? _selectedBannerImage;
   bool _isLoading = false;
   List<String> _selectedInterests = [];
-  List<String> _availableInterests = [
+  final List<String> _availableInterests = [
     'Photography', 'Travel', 'Food', 'Fitness', 'Music', 'Art', 'Technology',
     'Fashion', 'Sports', 'Reading', 'Gaming', 'Cooking', 'Dancing', 'Writing',
     'Design', 'Business', 'Education', 'Health', 'Nature', 'Movies', 'Fashion',
@@ -114,6 +114,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         interests: _selectedInterests,
       );
 
+      // Invalidate user data to refresh the UI
+      ref.invalidate(userDataProvider);
+
       if (mounted) {
         SuccessSnackBar.show(context, 'Profile updated successfully');
         Navigator.of(context).pop();
@@ -147,15 +150,31 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         backgroundColor: AppConstants.backgroundColor,
         elevation: 0,
         actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _saveProfile,
-            child: Text(
-              'Save',
-              style: GoogleFonts.poppins(
-                color: AppConstants.primaryColor,
-                fontWeight: AppConstants.fontWeightSemiBold,
-              ),
-            ),
+          Consumer(
+            builder: (context, ref, child) {
+              final profileState = ref.watch(profileNotifierProvider);
+              final isLoading = profileState.isLoading || _isLoading;
+              
+              return TextButton(
+                onPressed: isLoading ? null : _saveProfile,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+                        ),
+                      )
+                    : Text(
+                        'Save',
+                        style: GoogleFonts.poppins(
+                          color: AppConstants.primaryColor,
+                          fontWeight: AppConstants.fontWeightSemiBold,
+                        ),
+                      ),
+              );
+            },
           ),
         ],
       ),

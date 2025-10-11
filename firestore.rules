@@ -44,6 +44,33 @@ service cloud.firestore {
         request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && 
         request.auth.uid == request.resource.data.userId;
+      
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && 
+          request.auth.uid == resource.data.userId;
+        allow create: if request.auth != null && 
+          request.auth.uid == request.resource.data.userId;
+      }
+      
+      // Interactions subcollection
+      match /interactions/{interactionId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && 
+          request.auth.uid == resource.data.userId;
+        allow create: if request.auth != null && 
+          request.auth.uid == request.resource.data.userId;
+      }
+    }
+    
+    // Global interactions collection
+    match /interactions/{interactionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
     }
     
     // Interests collection - anyone can read

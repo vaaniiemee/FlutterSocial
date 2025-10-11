@@ -24,7 +24,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with TickerProviderStat
   final _nameController = TextEditingController();
   
   bool _isLogin = true;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
   
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;

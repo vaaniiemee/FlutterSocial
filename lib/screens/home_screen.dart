@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'explore_screen.dart';
 import 'communities_screen.dart';
 import 'profile_screen.dart';
+import 'create_post_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,14 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  void _createPost() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const CreatePostScreen(),
+      ),
+    );
   }
 
   @override
@@ -74,16 +83,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      floatingActionButton: _selectedIndex == 1
-          ? FloatingActionButton(
-              onPressed: () {},
-              backgroundColor: Theme.of(context).primaryColor,
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-              ),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createPost,
+        backgroundColor: Theme.of(context).primaryColor,
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 } 

@@ -22,14 +22,6 @@ final userDataProvider = StreamProvider<Map<String, dynamic>?>((ref) {
   });
 });
 
-final currentUserProvider = Provider<User?>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.when(
-    data: (user) => user,
-    loading: () => null,
-    error: (_, __) => null,
-  );
-});
 
 final hasCompletedOnboardingProvider = Provider<bool>((ref) {
   final userData = ref.watch(userDataProvider);

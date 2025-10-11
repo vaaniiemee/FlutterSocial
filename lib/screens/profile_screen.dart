@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/post_provider.dart';
 import '../widgets/common/custom_button.dart';
 import '../widgets/common/error_widget.dart';
+import '../widgets/post_card.dart';
+import '../widgets/post_grid_card.dart';
 import '../constants/app_constants.dart';
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
+import 'create_post_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -146,7 +149,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                         ? NetworkImage(data['photoURL'])
                         : null,
                     child: data['photoURL'] == null
-                        ? Icon(
+                        ? const Icon(
                             Icons.person,
                             size: AppConstants.iconSizeXXLarge,
                             color: AppConstants.primaryColor,
@@ -210,7 +213,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                       const SizedBox(height: AppConstants.spacingSmall),
                       Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.link,
                             size: AppConstants.iconSizeSmall,
                             color: AppConstants.primaryColor,
@@ -230,7 +233,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
                       const SizedBox(height: AppConstants.spacingSmall),
                       Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.location_on,
                             size: AppConstants.iconSizeSmall,
                             color: AppConstants.textSecondary,
@@ -346,107 +349,168 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   }
 
   Widget _buildPostsTab(Map<String, dynamic> data) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('posts')
-          .where('userId', isEqualTo: data['uid'])
-          .limit(20)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final currentUser = ref.watch(currentUserProvider);
+        if (currentUser == null) {
           return const Center(
+            child: Text('User not authenticated'),
+          );
+        }
+        
+        final userPostsAsync = ref.watch(userPostsProvider(currentUser.uid));
+        
+        return userPostsAsync.when(
+          data: (posts) {
+            if (posts.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
+                        border: Border.all(
+                          color: Colors.grey[300]!,
+                          width: 2,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.photo_camera_outlined,
+                        size: AppConstants.iconSizeXXLarge,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.spacingLarge),
+                    Text(
+                      'No posts yet',
+                      style: GoogleFonts.poppins(
+                        fontSize: AppConstants.fontSizeXLarge,
+                        fontWeight: AppConstants.fontWeightSemiBold,
+                        color: AppConstants.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.spacingSmall),
+                    Text(
+                      'Share your first post and start building your profile!',
+                      style: GoogleFonts.poppins(
+                        fontSize: AppConstants.fontSizeMedium,
+                        color: AppConstants.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppConstants.spacingXLarge),
+                    CustomButton(
+                      text: 'Create Post',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const CreatePostScreen(),
+                          ),
+                        );
+                      },
+                      icon: Icons.add,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(userPostsProvider(currentUser.uid));
+              },
+              child: GridView.builder(
+                padding: const EdgeInsets.all(AppConstants.spacingMedium),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: AppConstants.spacingSmall,
+                  mainAxisSpacing: AppConstants.spacingSmall,
+                  childAspectRatio: 1.0, // Perfect squares
+                ),
+                itemCount: posts.length,
+                itemBuilder: (context, index) {
+                  final post = posts[index];
+                  return PostGridCard(
+                    post: post,
+                    onTap: () {
+                      // Navigate to full post view
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => Scaffold(
+                            backgroundColor: AppConstants.backgroundColor,
+                            appBar: AppBar(
+                              backgroundColor: AppConstants.backgroundColor,
+                              elevation: 0,
+                              leading: IconButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                icon: const Icon(Icons.arrow_back),
+                              ),
+                              title: Text(
+                                'Post',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: AppConstants.fontWeightSemiBold,
+                                ),
+                              ),
+                            ),
+                            body: SingleChildScrollView(
+                              child: PostCard(post: post),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => const Center(
             child: CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
             ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return const Center(
-            child: Text('Error loading posts'),
-          );
-        }
-
-        final allPosts = snapshot.data?.docs ?? [];
-        
-        // Sort posts by creation date on client side
-        final posts = allPosts.toList()
-          ..sort((a, b) {
-            final aData = a.data() as Map<String, dynamic>;
-            final bData = b.data() as Map<String, dynamic>;
-            final aTime = aData['createdAt'] as Timestamp?;
-            final bTime = bData['createdAt'] as Timestamp?;
-            
-            if (aTime == null && bTime == null) return 0;
-            if (aTime == null) return 1;
-            if (bTime == null) return -1;
-            
-            return bTime.compareTo(aTime); // Descending order
-          });
-
-        if (posts.isEmpty) {
-          return Center(
+          ),
+          error: (error, stack) => Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.photo_camera_outlined,
+                const Icon(
+                  Icons.error_outline,
                   size: AppConstants.iconSizeXXLarge,
-                  color: Colors.grey[400],
+                  color: AppConstants.errorColor,
                 ),
                 const SizedBox(height: AppConstants.spacingMedium),
                 Text(
-                  'No posts yet',
+                  'Error loading posts',
                   style: GoogleFonts.poppins(
                     fontSize: AppConstants.fontSizeLarge,
-                    color: AppConstants.textSecondary,
+                    color: AppConstants.errorColor,
                   ),
                 ),
                 const SizedBox(height: AppConstants.spacingSmall),
                 Text(
-                  'Share your first post!',
+                  error.toString(),
                   style: GoogleFonts.poppins(
                     fontSize: AppConstants.fontSizeMedium,
-                    color: AppConstants.textTertiary,
+                    color: AppConstants.textSecondary,
                   ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppConstants.spacingLarge),
+                CustomButton(
+                  text: 'Try Again',
+                  onPressed: () {
+                    ref.invalidate(userPostsProvider(currentUser.uid));
+                  },
+                  type: ButtonType.outline,
                 ),
               ],
-                    ),
-                  );
-                }
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(AppConstants.spacingLarge),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 2,
-            mainAxisSpacing: 2,
+            ),
           ),
-          itemCount: posts.length,
-          itemBuilder: (context, index) {
-            final post = posts[index].data() as Map<String, dynamic>;
-            final imageUrl = post['imageUrls']?.isNotEmpty == true 
-                ? post['imageUrls'][0] 
-                : null;
-            
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                image: imageUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(imageUrl),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: imageUrl == null
-                  ? const Icon(
-                      Icons.image,
-                      color: Colors.grey,
-                    )
-                  : null,
-            );
-          },
         );
       },
     );

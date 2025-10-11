@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/app_constants.dart';
 import '../widgets/common/custom_button.dart';
 import '../widgets/common/error_widget.dart';
@@ -212,7 +213,7 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
           decoration: BoxDecoration(
             image: userData['bannerURL'] != null && userData['bannerURL'].toString().isNotEmpty
                 ? DecorationImage(
-                    image: NetworkImage(userData['bannerURL'] as String),
+                    image: CachedNetworkImageProvider(userData['bannerURL'] as String),
                     fit: BoxFit.cover,
                     onError: (exception, stackTrace) {
                       // Handle image loading error
@@ -263,7 +264,7 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
                       radius: 45,
                       backgroundColor: Colors.grey[200],
                       backgroundImage: userData['photoURL'] != null && userData['photoURL'].toString().isNotEmpty
-                          ? NetworkImage(userData['photoURL'] as String)
+                          ? CachedNetworkImageProvider(userData['photoURL'] as String)
                           : null,
                       child: userData['photoURL'] == null || userData['photoURL'].toString().isEmpty
                           ? Icon(
@@ -595,34 +596,26 @@ class _UserProfileViewScreenState extends ConsumerState<UserProfileViewScreen>
                 borderRadius: BorderRadius.circular(4),
                 child: postData['imageUrls'] != null && 
                        (postData['imageUrls'] as List).isNotEmpty
-                    ? Image.network(
-                        (postData['imageUrls'] as List).first,
+                    ? CachedNetworkImage(
+                        imageUrl: (postData['imageUrls'] as List).first,
                         fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            color: Colors.grey[200],
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded / 
-                                      loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
                             ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[200],
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: Colors.grey[400],
-                              size: 24,
-                            ),
-                          );
-                        },
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                            size: 24,
+                          ),
+                        ),
                       )
                     : Container(
                         color: Colors.grey[200],
