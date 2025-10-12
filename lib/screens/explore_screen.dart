@@ -157,6 +157,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
   }
 
   Widget _buildCategoryChip(String id, String name, IconData icon, bool isSelected) {
+    final categoryColor = id == 'all' 
+        ? AppConstants.primaryColor 
+        : AppConstants.getCategoryColor(id);
+    
     return Container(
       margin: const EdgeInsets.only(right: AppConstants.spacingSmall),
       child: FilterChip(
@@ -172,14 +176,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
             Icon(
               icon,
               size: AppConstants.iconSizeSmall,
-              color: isSelected ? Colors.white : AppConstants.primaryColor,
+              color: isSelected ? Colors.white : categoryColor,
             ),
             const SizedBox(width: AppConstants.spacingXSmall),
             Text(
               name,
               style: GoogleFonts.poppins(
                 fontSize: AppConstants.fontSizeSmall,
-                color: isSelected ? Colors.white : AppConstants.primaryColor,
+                color: isSelected ? Colors.white : categoryColor,
                 fontWeight: isSelected 
                     ? AppConstants.fontWeightSemiBold 
                     : AppConstants.fontWeightNormal,
@@ -188,10 +192,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
           ],
         ),
         backgroundColor: Colors.transparent,
-        selectedColor: AppConstants.primaryColor,
+        selectedColor: categoryColor,
         checkmarkColor: Colors.white,
         side: BorderSide(
-          color: isSelected ? AppConstants.primaryColor : AppConstants.textTertiary,
+          color: isSelected ? categoryColor : AppConstants.textTertiary,
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),

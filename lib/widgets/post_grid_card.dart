@@ -213,8 +213,10 @@ class PostGridCard extends ConsumerWidget {
   Widget _buildCategoryBadge() {
     final categoryData = AppConstants.postCategories.firstWhere(
       (cat) => cat['id'] == post.category,
-      orElse: () => {'name': post.category, 'icon': Icons.category},
+      orElse: () => {'name': post.category, 'icon': Icons.category, 'color': AppConstants.primaryColor},
     );
+
+    final categoryColor = categoryData['color'] as Color;
 
     return Positioned(
       top: AppConstants.spacingSmall,
@@ -225,7 +227,7 @@ class PostGridCard extends ConsumerWidget {
           vertical: 4,
         ),
         decoration: BoxDecoration(
-          color: AppConstants.primaryColor.withValues(alpha: 0.9),
+          color: categoryColor.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
         ),
         child: Row(

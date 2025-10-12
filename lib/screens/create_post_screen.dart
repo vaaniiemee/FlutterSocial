@@ -446,6 +446,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           ),
           // Category options
           ...AppConstants.postCategories.map((category) {
+            final categoryColor = category['color'] as Color;
             return DropdownMenuItem<String>(
               value: category['id'],
               child: Row(
@@ -453,7 +454,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   Icon(
                     category['icon'],
                     size: AppConstants.iconSizeSmall,
-                    color: AppConstants.primaryColor,
+                    color: categoryColor,
                   ),
                   const SizedBox(width: AppConstants.spacingSmall),
                   Text(

@@ -409,6 +409,7 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
           ),
           // Category options
           ...AppConstants.postCategories.map((category) {
+            final categoryColor = category['color'] as Color;
             return DropdownMenuItem<String>(
               value: category['id'],
               child: Row(
@@ -416,7 +417,7 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
                   Icon(
                     category['icon'],
                     size: AppConstants.iconSizeSmall,
-                    color: AppConstants.primaryColor,
+                    color: categoryColor,
                   ),
                   const SizedBox(width: AppConstants.spacingSmall),
                   Text(

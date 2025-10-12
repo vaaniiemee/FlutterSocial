@@ -300,6 +300,15 @@ class _PostCardState extends ConsumerState<PostCard> {
             _buildImageGrid(),
           ],
 
+          // Category Badge
+          if (widget.post.category.isNotEmpty) ...[
+            const SizedBox(height: AppConstants.spacingMedium),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppConstants.spacingLarge),
+              child: _buildCategoryBadge(),
+            ),
+          ],
+
           // Tags
           if (widget.post.tags.isNotEmpty) ...[
             const SizedBox(height: AppConstants.spacingMedium),
@@ -629,6 +638,48 @@ class _PostCardState extends ConsumerState<PostCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryBadge() {
+    final categoryData = AppConstants.postCategories.firstWhere(
+      (cat) => cat['id'] == widget.post.category,
+      orElse: () => {'name': widget.post.category, 'icon': Icons.category, 'color': AppConstants.primaryColor},
+    );
+
+    final categoryColor = categoryData['color'] as Color;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingMedium,
+        vertical: AppConstants.spacingSmall,
+      ),
+      decoration: BoxDecoration(
+        color: categoryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+        border: Border.all(
+          color: categoryColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            categoryData['icon'],
+            size: AppConstants.iconSizeSmall,
+            color: categoryColor,
+          ),
+          const SizedBox(width: AppConstants.spacingXSmall),
+          Text(
+            categoryData['name'],
+            style: GoogleFonts.poppins(
+              fontSize: AppConstants.fontSizeSmall,
+              color: categoryColor,
+              fontWeight: AppConstants.fontWeightMedium,
+            ),
+          ),
+        ],
       ),
     );
   }
