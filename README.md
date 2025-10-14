@@ -1,4 +1,4 @@
-# MeetPlace
+# Flutter Social
 
 
 ## Getting Started
