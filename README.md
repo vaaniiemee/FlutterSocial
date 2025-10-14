@@ -69,4 +69,4 @@ APP_ID=your_app_id
 
 ---
 
-This template was developed using with assistance from the Nozomio NIA + LLM
+This template was developed with assistance from the Nozomio NIA + LLM
