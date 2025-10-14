@@ -1,5 +1,10 @@
 # FlutterSocial
 
+![Flutter](https://img.shields.io/badge/flutter-3.13.0-blue)
+![Firebase](https://img.shields.io/badge/Firebase-Active-orange)
+
+
+
 FlutterSocial is a simple template of social networking app using **Flutter** and **Firebase**.  
 It includes registration, onboarding, profile management, posts, threads, chats, and real-time messaging.  
 
