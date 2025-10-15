@@ -15,8 +15,8 @@ It includes registration, onboarding, profile management, posts, threads, chats,
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/yourusername/socially.git
-cd socially
+git clone https://github.com/vaaniiemee/FlutterSocial.git
+cd FlutterSocial
 flutter pub get
 ```
 
